@@ -1,0 +1,34 @@
+Para el Empleador:
+
+Gestión de Empresas y Empleados:
+
+Como empleador, quiero registrar una nueva empresa para gestionar sus empleados y planillas.
+Como empleador, quiero editar la información de mi empresa para mantenerla actualizada.
+Como empleador, quiero registrar un nuevo empleado para gestionar sus datos laborales.
+Como empleador, quiero asignar un empleado a una regional específica para llevar un control organizado.
+Planillas:
+
+Como empleador, quiero generar una planilla para un empleado para registrar su salario y días trabajados del mes.
+Como empleador, quiero registrar una incapacidad en una planilla para ajustar el salario según los días no trabajados.
+Visualización y Reportes:
+
+Como empleador, quiero ver el estado de las planillas (aprobadas, pendientes) para tener control sobre los pagos.
+Como empleador, quiero ver las multas generadas y su estado (pagadas, pendientes) para gestionar mis obligaciones.
+Para el Usuario de la Unidad de Cotizaciones:
+
+Validación y Aprobación de Planillas:
+
+Como usuario de la unidad de cotizaciones, quiero revisar las planillas enviadas por los empleadores para verificar su exactitud.
+Como usuario de la unidad de cotizaciones, quiero aprobar o rechazar una planilla tras revisarla.
+Como usuario de la unidad de cotizaciones, quiero registrar una multa para un empleador específico en caso de incumplimientos.
+Reportes y Resúmenes:
+
+Como usuario de la unidad de cotizaciones, quiero generar informes de aportes y salarios para fines administrativos.
+Como usuario de la unidad de cotizaciones, quiero ver un resumen mensual por regional para entender el rendimiento y aportes de cada oficina.
+Configuraciones y Parámetros:
+
+Como usuario de la unidad de cotizaciones, quiero actualizar la tasa de interés según directivas superiores.
+Como usuario de la unidad de cotizaciones, quiero definir y actualizar el salario mínimo anual tras directivas.
+Notificaciones y Alertas:
+
+Como usuario de la unidad de cotizaciones, quiero recibir una notificación cuando una nueva planilla esté pendiente de revisión para actuar rápidamente.

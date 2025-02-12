@@ -1,0 +1,6 @@
+export enum EstadosPlanillas {
+  INICIALIZADO = 'INICIALIZADO',
+  ENVIADO = 'ENVIADO',
+  CANCELADO = 'CANCELADO',
+  APROBADO = 'APROBADO',
+}

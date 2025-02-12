@@ -1,0 +1,216 @@
+Table empresa {
+  id_empresa int [pk]
+  numero_patronal varchar
+  razon_social varchar
+  tipo varchar
+  nit varchar
+  telf_celular varchar
+  domicilio varchar
+  correo varchar
+  created_at datetime
+  updated_at datetime
+  user_id int
+  baja_logica boolean [default: true]
+}
+
+Table regional {
+  id_regional int [pk]
+  nombre_regional varchar
+  codigo_regional varchar
+  domicilio varchar
+  celular varchar
+  created_at datetime
+  updated_at datetime
+  user_id int
+  baja_logica boolean [default: true]
+  id_empresa int [ref: > empresa.id_empresa]
+}
+
+Table tasa_interes_aporte {
+  id_tasa int [pk, increment]
+  porcentaje decimal
+  vigente boolean
+  observaciones varchar
+  created_at datetime
+  updated_at datetime
+  user_id int
+}
+
+Table empleado {
+  matricula varchar [pk]
+  carnet_identidad varchar
+  nombres varchar
+  apellido_paterno varchar
+  apellido_materno varchar
+  cargo varchar
+  gestion date
+  dias_trabajados int
+  total_ganado decimal
+  fecha_ingreso date
+  fecha_retiro date
+  nacionalidad varchar
+  fecha_nacimiento date
+  validado_afilaciones boolean
+  created_at datetime
+  updated_at datetime
+  user_id int
+  id_regional int [ref: > regional.id_regional]
+}
+
+Table salario_minimo {
+  id_salario_minimo int [pk, increment]
+  gestion date 
+  monto decimal
+  vigente boolean
+  observaciones varchar
+  created_at datetime
+  updated_at datetime
+}
+
+Table planilla {
+  id_planilla int [pk]
+  id_tipo_planilla int [ref: > tipo_planilla.id_tipo_planilla]
+  matricula varchar [ref: > empleado.matricula] 
+  dias_trabajados int
+  cargo varchar
+  fecha_ingreso date
+  fecha_retiro date
+  total_ganado decimal
+  fecha date
+  observaciones text
+  aprobado boolean [default: false]
+  fecha_aprobacion date
+  aprobado_por int
+  created_at datetime
+  updated_at datetime 
+  user_id int
+  baja_logica boolean [default: true]
+  id_tasa int [ref: > tasa_interes_aporte.id_tasa] 
+}
+
+Table tipo_planilla {
+  id_tipo_planilla int [pk]
+  nombre varchar
+  descripcion varchar
+  created_at datetime
+  updated_at datetime 
+  user_id int
+  baja_logica boolean [default: true]
+}
+
+Table tipo_incapacidad {
+  id_tipo_incapacidad int [pk, increment]
+  descripcion varchar 
+  porcentaje_aporte decimal
+  created_at datetime
+  updated_at datetime 
+  user_id int
+}
+
+Table planilla_incapacidades {
+  id_planilla_incapacidad int [pk, increment]
+  matricula varchar [ref: > empleado.matricula] 
+  id_tipo_incapacidad int [ref: > tipo_incapacidad.id_tipo_incapacidad]
+  fecha_inicio date
+  fecha_fin date
+  dias_incapacidad int
+  subsidio_por_dia decimal
+  monto_reconocido decimal
+  created_at datetime
+  updated_at datetime 
+  user_id int
+}
+
+Table resumen_mensual_regional {
+  id_resumen int [pk, increment]
+  id_regional int [ref: > regional.id_regional]
+  mes date
+  total_aporte_salarios decimal
+  numero_trabajadores int
+  total_aportes decimal
+  id_tasa int [ref: > tasa_interes_aporte.id_tasa]
+  created_at datetime
+  updated_at datetime
+  user_id int
+}
+
+Table historial_aprobaciones {
+  id_historial int [pk, increment]
+  id_planilla int [ref: > planilla.id_planilla]
+  aprobado boolean
+  fecha datetime
+  user_id int
+  observaciones text
+}
+
+Table historial_empleado {
+  id_historial_empleado int [pk, increment]
+  matricula varchar [ref: > empleado.matricula]
+  id_regional_anterior int [ref: > regional.id_regional]
+  id_regional_nuevo int [ref: > regional.id_regional]
+  fecha_cambio date
+  motivo_cambio varchar
+  user_id int 
+  created_at datetime
+  updated_at datetime
+}
+
+Table historial_empresa {
+  id_historial_empresa int [pk, increment]
+  id_empresa int [ref: > empresa.id_empresa]
+  campo_modificado varchar
+  valor_anterior varchar
+  valor_nuevo varchar
+  fecha_cambio date
+  motivo_cambio varchar
+  user_id int 
+  created_at datetime
+  updated_at datetime
+}
+
+Table historial_regional {
+  id_historial_regional int [pk, increment]
+  id_regional int [ref: > regional.id_regional]
+  campo_modificado varchar
+  valor_anterior varchar
+  valor_nuevo varchar
+  fecha_cambio date
+  motivo_cambio varchar
+  user_id int 
+  created_at datetime
+  updated_at datetime
+}
+
+Table ufv {
+  fecha date [pk]
+  valor_ufv decimal
+  created_at datetime
+  updated_at datetime
+  user_id int
+}
+
+Table multas {
+  id_multa int [pk, increment]
+  descripcion varchar
+  monto decimal
+  fecha_imposicion date
+  fecha_pago date
+  id_regional int [ref: > regional.id_regional]  // Relación con la tabla regional.
+  created_at datetime
+  updated_at datetime
+  user_id int
+  baja_logica boolean [default: true]
+}
+
+Table tipo_cite {
+  id_tipo_cite int [pk, increment]
+  descripcion varchar // ej. "Resumen Mensual", "Multa", "Reporte Anual", etc.
+}
+
+Table control_codigos {
+  id_control int [pk, increment]
+  id_tipo_cite int [ref: > tipo_cite.id_tipo_cite]
+  ultimo_codigo int
+  year int
+}
+

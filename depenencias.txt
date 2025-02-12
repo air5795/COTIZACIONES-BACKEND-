@@ -1,0 +1,7 @@
+npm i --save @nestjs/typeorm typeorm
+npm i --save @nestjs/swagger
+npm i --save @nestjs/config
+npm install pg
+npm install class-validator
+npm install class-transformer
+npm i joi

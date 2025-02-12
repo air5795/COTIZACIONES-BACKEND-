@@ -1,0 +1,32 @@
+Que es un exceptionFilter 
+Los filtros de excepciones en NestJS, como `AllExceptionsFilter`, son parte del sistema de manejo de 
+excepciones de la biblioteca. Estos filtros interceptan excepciones lanzadas desde dentro de los 
+controladores o cualquier otro proveedor de NestJS, permitiéndote transformarlas antes de enviar la respuesta al cliente.
+
+La clase `AllExceptionsFilter` puede considerarse como un "filtro de último recurso" que captura todas 
+las excepciones no manejadas que se propagan a través de la pila de ejecución. Este filtro generalmente 
+se usa para manejar excepciones de una manera uniforme en toda la aplicación. 
+
+Aquí hay algunas cosas que podrías hacer con un filtro de excepciones global:
+
+1. **Formatear la Respuesta**: Puedes asegurarte de que, independientemente del error que ocurra, 
+el cliente siempre reciba una respuesta bien formateada. Por ejemplo, podrías querer que todas las 
+respuestas de error tengan una estructura particular, como `{ status, data, message }`.
+
+2. **Registrar Excepciones**: Puedes registrar información detallada sobre la excepción para su posterior 
+análisis. Esto podría incluir el tipo de excepción, datos adicionales relacionados, el estado del sistema en el
+ momento del error, etc.
+
+3. **Transformar Excepciones**: Puedes transformar ciertos tipos de excepciones en otros más específicos 
+antes de enviar la respuesta al cliente. Por ejemplo, podrías transformar errores de base de datos genéricos
+ en mensajes más legibles para el usuario final.
+
+4. **Aplicar Políticas de Seguridad**: En caso de excepciones específicas (como errores de autenticación), 
+podrías decidir redirigir al usuario, cerrar una conexión, etc.
+
+5. **Análisis y Monitoreo**: Puedes enviar excepciones a un sistema de monitoreo para la recopilación y 
+el análisis de métricas, lo cual es útil para entender cómo se está utilizando tu aplicación y dónde 
+falla con más frecuencia.
+
+En resumen, el uso de `AllExceptionsFilter` te permite manejar excepciones de manera centralizada y 
+coherente, asegurando que tu aplicación se comporte de manera predecible incluso cuando las cosas salen mal.

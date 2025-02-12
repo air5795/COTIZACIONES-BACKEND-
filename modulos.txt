@@ -1,0 +1,161 @@
+src/
+|-- app.module.ts
+|-- app.controller.ts
+|-- app.service.ts
+|-- main.ts
+|
+|-- config/
+|   |-- database.config.ts
+|   |-- env.config.ts
+|
+|-- auth/
+|   |-- auth.module.ts
+|   |-- auth.controller.ts
+|   |-- auth.service.ts
+|
+|-- empresa/ 
+|   |-- empresa.module.ts
+|   |-- empresa.controller.ts
+|   |-- empresa.service.ts
+|   |-- empresa.entity.ts
+|
+|-- empleado/
+|   |-- empleado.module.ts
+|   |-- empleado.controller.ts
+|   |-- empleado.service.ts
+|   |-- empleado.entity.ts
+|   |-- empleado_auditoria.entity.ts
+|
+|-- regional/
+|   |-- regional.module.ts
+|   |-- regional.controller.ts
+|   |-- regional.service.ts
+|   |-- regional.entity.ts
+|
+|-- tasa-interes-aporte/
+|   |-- tasa-interes-aporte.module.ts
+|   |-- tasa-interes-aporte.controller.ts
+|   |-- tasa-interes-aporte.service.ts
+|   |-- tasa-interes-aporte.entity.ts
+|
+|-- salario-minimo/
+|   |-- salario-minimo.module.ts
+|   |-- salario-minimo.controller.ts
+|   |-- salario-minimo.service.ts
+|   |-- salario-minimo.entity.ts
+|
+|-- tipo-planilla/
+|   |-- tipo-planilla.module.ts
+|   |-- tipo-planilla.controller.ts
+|   |-- tipo-planilla.service.ts
+|   |-- tipo-planilla.entity.ts
+|
+|-- planilla/
+|   |-- planilla.module.ts
+|   |-- planilla.controller.ts
+|   |-- planilla.service.ts
+|   |-- planilla.entity.ts
+|
+|-- regional-empleado-planilla/
+|   |-- empresa-empleado-planilla.module.ts
+|   |-- empresa-empleado-planilla.controller.ts
+|   |-- empresa-empleado-planilla.service.ts
+|   |-- regional-empleado-planilla.entity.ts
+|
+|-- tipo-incapacidad/
+|   |-- tipo-incapacidad.module.ts
+|   |-- tipo-incapacidad.controller.ts
+|   |-- tipo-incapacidad.service.ts
+|   |-- tipo-incapacidad.entity.ts
+|
+|-- planilla-incapacidades/
+|   |-- planilla-incapacidades.module.ts
+|   |-- planilla-incapacidades.controller.ts
+|   |-- planilla-incapacidades.service.ts
+|   |-- planilla-incapacidades.entity.ts
+|
+|-- resumen-mensual-regional/
+|   |-- resumen-mensual-regional.module.ts
+|   |-- resumen-mensual-regional.controller.ts
+|   |-- resumen-mensual-regional.service.ts
+|   |-- resumen-mensual-regional.entity.ts
+|
+|-- ufv/
+|   |-- ufv.module.ts
+|   |-- ufv.controller.ts
+|   |-- ufv.service.ts
+|   |-- ufv.entity.ts
+|
+|-- tipo-cite/
+|   |-- tipo-cite.module.ts
+|   |-- tipo-cite.controller.ts
+|   |-- tipo-cite.service.ts
+|   |-- tipo-cite.entity.ts
+|
+|-- control-codigos/
+|   |-- control-codigos.module.ts
+|   |-- control-codigos.controller.ts
+|   |-- control-codigos.service.ts
+|   |-- control-codigos.entity.ts
+|
+|-- planilla-aportes-devengados/
+|   |-- planilla-aportes-devengados.module.ts
+|   |-- planilla-aportes-devengados.controller.ts
+|   |-- planilla-aportes-devengados.service.ts
+|   |-- planilla-aportes-devengados.entity.ts
+|
+|-- tipo-multas/
+|   |-- tipo-multas.module.ts
+|   |-- tipo-multas.controller.ts
+|   |-- tipo-multas.service.ts
+|   |-- tipo-multas.entity.ts
+|
+|-- multas/
+|   |-- multas.module.ts
+|   |-- multas.controller.ts
+|   |-- multas.service.ts
+|   |-- multas.entity.ts
+|
+|-- parte-baja-asegurado/
+|   |-- parte-baja-asegurado.module.ts
+|   |-- parte-baja-asegurado.controller.ts
+|   |-- parte-baja-asegurado.service.ts
+|   |-- parte-baja-asegurado.entity.ts
+|
+|-- utils/
+|   |-- constants.ts
+|   |-- helpers.ts
+
+-------------------------------------------------------------
+Claro, la modularización propuesta sigue las mejores prácticas para una aplicación NestJS y se basa en la estructura de tu base de datos. Aquí algunas razones para esta organización:
+
+### 1. Separación de Responsabilidades
+Cada módulo representa una entidad específica del dominio de negocio (como `empleado`, `empresa`, `tasa_interes_aporte`, etc.), y encapsula todo lo que se relaciona con esa entidad: controladores, servicios, y modelos (entidades). Esto facilita que diferentes miembros de un equipo de desarrollo puedan trabajar en entidades distintas sin causar conflictos.
+
+### 2. Reutilización
+La modularización permite reutilizar lógica más fácilmente. Si una parte del sistema necesita acceso a la lógica de la entidad `empresa`, por ejemplo, simplemente puedes importar el módulo `empresa` donde lo necesites.
+
+### 3. Mantenibilidad
+Es más fácil realizar cambios y adiciones en un sistema modular. Si necesitas cambiar algo relacionado con `empleado`, sabes exactamente dónde encontrar el código relacionado. 
+
+### 4. Pruebas Unitarias
+La modularización facilita las pruebas unitarias, ya que puedes probar cada módulo de forma aislada.
+
+### 5. Claridad y Facilidad de Navegación
+Un nuevo desarrollador que se una al equipo podrá entender más rápidamente la estructura del proyecto. Los nombres de los módulos y sus responsabilidades son claros y autoexplicativos.
+
+### 6. Acoplamiento y Cohesión
+La modularización ayuda a mantener bajo el acoplamiento y alta la cohesión. En términos de diseño de software, esto significa que cada módulo es altamente independiente y se centra en hacer una sola cosa bien.
+
+### 7. Configuración y Utilidades
+Se incluye un módulo de `config` para centralizar la configuración de la aplicación y un módulo de `utils` para funciones de utilidad comunes, lo cual mejora la organización del código y evita la duplicación.
+
+### 8. Flexibilidad para Escalar
+Si en el futuro se necesita dividir la aplicación en microservicios, una estructura modular facilitará este proceso.
+
+### 9. Seguridad
+Con un sistema modular, es más fácil implementar mecanismos de seguridad a nivel de módulo si es necesario.
+
+En resumen, esta estructura modular se alinea con los principios de diseño de software sólidos y efectivos, haciendo que la aplicación sea más mantenible, escalable y robusta.
+-----------------------------
+   
