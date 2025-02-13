@@ -1,4 +1,4 @@
-import { Controller, Post, Get, UseInterceptors, UploadedFile, BadRequestException, Body, Param, Put } from '@nestjs/common';
+import { Controller, Post, Get, UseInterceptors, UploadedFile, BadRequestException, Body, Param, Put, HttpException, HttpStatus } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { PlanillasAportesService } from './planillas_aportes.service';
@@ -33,13 +33,26 @@ export class PlanillasAportesController {
       if (!file) throw new BadRequestException('No se recibió ningún archivo');
 
       const data = this.planillasAportesService.procesarExcel(file.path);
-      return this.planillasAportesService.guardarPlanilla(data, body.cod_patronal, body.mes, body.gestion);
+      return this.planillasAportesService.guardarPlanilla(data, body.cod_patronal, body.gestion, body.mes, body.empresa,);
     }
 
     // Nuevo endpoint para obtener el historial de planillas de una empresa
     @Get('historial/:cod_patronal')
     async obtenerHistorial(@Param('cod_patronal') cod_patronal: string) {
       return this.planillasAportesService.obtenerHistorial(cod_patronal);
+    }
+
+    // Nuevo endpoint para obtener todo el historial de planillas
+    @Get('historial')
+    async obtenerTodoHistorial() {
+      try {
+        return await this.planillasAportesService.obtenerTodoHistorial();
+      } catch (error) {
+        throw new HttpException({
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: 'Error al obtener el historial de planillas',
+        }, HttpStatus.INTERNAL_SERVER_ERROR);
+      }
     }
 
     // obtener planilla por id
@@ -89,6 +102,21 @@ export class PlanillasAportesController {
       @Body() body
     ) {
       return this.planillasAportesService.corregirPlanilla(id_planilla, body);
+    }
+
+    @Get('comparar/:cod_patronal/:gestion/:mesAnterior/:mesActual')
+    async compararPlanillas(
+      @Param('cod_patronal') cod_patronal: string,
+      @Param('gestion') gestion: string,
+      @Param('mesAnterior') mesAnterior: string,
+      @Param('mesActual') mesActual: string
+    ) {
+      return await this.planillasAportesService.compararPlanillas(
+        cod_patronal,
+        mesAnterior,
+        gestion,
+        mesActual
+      );
     }
 
 

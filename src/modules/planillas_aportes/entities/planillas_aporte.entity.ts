@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { PlanillaAportesDetalles } from './planillas_aportes_detalles.entity';
 @Entity({ schema: 'transversales', name: 'planillas_aportes' })
 
 export class PlanillasAporte {
@@ -14,9 +15,13 @@ export class PlanillasAporte {
   
     @Column()
     mes: string;
-
+    
     @Column()
     gestion: string;
+    
+    @Column()
+    empresa: string;
+    
 
     @Column()
     total_importe: number;
@@ -35,4 +40,8 @@ export class PlanillasAporte {
 
     @Column()
     observaciones: string;
+
+    
+
+
 }

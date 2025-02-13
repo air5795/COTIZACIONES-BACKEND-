@@ -33,7 +33,7 @@ export class PlanillasAportesService {
     }
   }
 
-  async guardarPlanilla(data: any[], cod_patronal: string, mes: string, gestion: string) {
+  async guardarPlanilla(data: any[], cod_patronal: string, gestion: string , mes: string, empresa: string,) {
     // Verificar si ya existe una planilla con el mismo cod_patronal, mes y gestión
     const existePlanilla = await this.planillaRepo.findOne({
         where: { cod_patronal, mes, gestion }
@@ -52,11 +52,12 @@ export class PlanillasAportesService {
     // Guardar la cabecera de la planilla
     const nuevaPlanilla = this.planillaRepo.create({
         cod_patronal,
-        mes,
         gestion,
+        mes,
+        empresa,
         total_importe: totalImporte,
         total_trabaj: totalTrabaj,
-        estado: 1, // Pendiente
+        estado: 1, // Pendiente (1) 
     });
 
     const planillaGuardada = await this.planillaRepo.save(nuevaPlanilla);
@@ -75,7 +76,7 @@ export class PlanillasAportesService {
         fecha_ingreso: new Date(1900, 0, row['Fecha de ingreso'] - 1),
         fecha_retiro: row['Fecha Retiro'] ? new Date(1900, 0, row['Fecha Retiro'] - 1) : null,
         dias_pagados: row['Días pagados'],
-        salario: row['Haber Básico'],
+        salario: parseFloat(row['Haber Básico'].toString()) || 0,
         regional: row['regional'],
     }));
 
@@ -93,6 +94,7 @@ async obtenerHistorial(cod_patronal: string) {
       'id_planilla_aportes',
       'com_nro',
       'cod_patronal',
+      'empresa',
       'mes',
       'gestion',
       'total_importe',
@@ -110,6 +112,38 @@ async obtenerHistorial(cod_patronal: string) {
     mensaje: 'Historial obtenido con éxito',
     planillas
   };
+}
+
+async obtenerTodoHistorial() {
+  try {
+    const planillas = await this.planillaRepo.find({
+      where: { estado: 1 },
+      order: { fecha_creacion: 'DESC' },
+      select: [
+        'id_planilla_aportes',
+        'com_nro',
+        'cod_patronal',
+        'empresa',
+        'mes',
+        'gestion',
+        'total_importe',
+        'total_trabaj',
+        'estado',
+        'fecha_creacion'
+      ]
+    });
+
+    if (!planillas.length) {
+      return { mensaje: 'No hay planillas registradas', planillas: [] };
+    }
+
+    return {
+      mensaje: 'Historial obtenido con éxito',
+      planillas
+    };
+  } catch (error) {
+    throw new Error('Error al obtener el historial de planillas');
+  }
 }
 
 async obtenerPlanilla(id_planilla: number) {
@@ -237,6 +271,7 @@ async obtenerPlanillasObservadas(cod_patronal: string) {
       'id_planilla_aportes',
       'com_nro',
       'cod_patronal',
+      'empresa',
       'mes',
       'gestion',
       'total_importe',
@@ -306,6 +341,67 @@ async corregirPlanilla(id_planilla: number, data: any) {
 
   return { mensaje: 'Planilla corregida y reenviada para validación', total_importe: totalImporteCalculado };
 }
+
+
+
+async obtenerDetallesDeMes(cod_patronal: string, mes: string, gestion: string) {
+  const planilla = await this.planillaRepo.findOne({
+    where: { cod_patronal, mes, gestion }
+  });
+
+  if (!planilla) {
+    throw new BadRequestException('No existe planilla para el mes y gestión solicitados.');
+  }
+
+  const detalles = await this.detalleRepo.find({
+    where: { id_planilla_aportes: planilla.id_planilla_aportes },
+    order: { nro: 'ASC' },
+  });
+
+  return detalles;
+}
+
+
+async compararPlanillas(cod_patronal: string, mesAnterior: string, gestion: string, mesActual: string) {
+  // Obtener los detalles de las planillas de enero y febrero
+  const detallesMesAnterior = await this.obtenerDetallesDeMes(cod_patronal, mesAnterior, gestion);
+  const detallesMesActual = await this.obtenerDetallesDeMes(cod_patronal, mesActual, gestion);
+
+  const altas = [];
+  const bajas = [];
+
+  // Comparar los detalles entre ambos meses
+  detallesMesActual.forEach(trabajadorActual => {
+    const trabajadorAnterior = detallesMesAnterior.find(trabajador => trabajador.ci === trabajadorActual.ci);
+    
+    // Si no se encuentra al trabajador en la planilla anterior y no tiene fecha de retiro, es una alta
+    if (!trabajadorAnterior) {
+      altas.push(trabajadorActual);
+    } else {
+      // Si el trabajador estaba en el mes anterior y ahora tiene fecha de retiro, es baja
+      if (trabajadorAnterior.fecha_retiro && trabajadorAnterior.fecha_retiro <= new Date()) {
+        bajas.push(trabajadorAnterior);
+      }
+    }
+  });
+
+  // Verificar bajas: trabajadores que no están en la planilla actual pero estaban en la anterior
+  detallesMesAnterior.forEach(trabajadorAnterior => {
+    const trabajadorActual = detallesMesActual.find(trabajador => trabajador.ci === trabajadorAnterior.ci);
+    // Si el trabajador no está en la planilla actual y tiene fecha de retiro, es baja
+    if (!trabajadorActual || (trabajadorAnterior.fecha_retiro && trabajadorAnterior.fecha_retiro <= new Date())) {
+      bajas.push(trabajadorAnterior);
+    }
+  });
+
+  return {
+    altas,
+    bajas,
+    mensaje: 'Comparación de planillas completada',
+  };
+}
+
+
 
 
 

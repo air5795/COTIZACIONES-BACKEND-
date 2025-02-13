@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
 import { PlanillasAporte } from './planillas_aporte.entity';
 
+
 @Entity({ schema: 'transversales', name: 'planilla_aportes_detalles' })
 export class PlanillaAportesDetalles {
   @PrimaryGeneratedColumn()
@@ -47,5 +48,7 @@ export class PlanillaAportesDetalles {
 
   @Column()
   regional: string;
+
+  
 
 }
