@@ -1,10 +1,13 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, StreamableFile } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as xlsx from 'xlsx';
-import * as fs from 'fs';
 import { PlanillasAporte } from './entities/planillas_aporte.entity';
 import { PlanillaAportesDetalles } from './entities/planillas_aportes_detalles.entity';
+import * as xlsx from 'xlsx';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as carbone from 'carbone';
+
 
 @Injectable()
 export class PlanillasAportesService {
@@ -15,6 +18,21 @@ export class PlanillasAportesService {
     @InjectRepository(PlanillaAportesDetalles)
     private detalleRepo: Repository<PlanillaAportesDetalles>,
   ) {}
+
+    // Timeout manual (en milisegundos)
+    private timeout(ms: number): Promise<never> {
+      return new Promise((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                'El tiempo de espera para procesar la solicitud ha expirado',
+              ),
+            ),
+          ms,
+        ),
+      );
+    }
 
   procesarExcel(filePath: string) {
     try {
@@ -342,7 +360,7 @@ async corregirPlanilla(id_planilla: number, data: any) {
   return { mensaje: 'Planilla corregida y reenviada para validación', total_importe: totalImporteCalculado };
 }
 
-
+// OBTENER  DETALLES DE PLANILLA POR MES Y GESTION
 
 async obtenerDetallesDeMes(cod_patronal: string, mes: string, gestion: string) {
   const planilla = await this.planillaRepo.findOne({
@@ -360,50 +378,215 @@ async obtenerDetallesDeMes(cod_patronal: string, mes: string, gestion: string) {
 
   return detalles;
 }
+  // Comparar planillas con correcciOn de bajas repetidas
 
-
-async compararPlanillas(cod_patronal: string, mesAnterior: string, gestion: string, mesActual: string) {
-  // Obtener los detalles de las planillas de enero y febrero
-  const detallesMesAnterior = await this.obtenerDetallesDeMes(cod_patronal, mesAnterior, gestion);
-  const detallesMesActual = await this.obtenerDetallesDeMes(cod_patronal, mesActual, gestion);
-
-  const altas = [];
-  const bajas = [];
-
-  // Comparar los detalles entre ambos meses
-  detallesMesActual.forEach(trabajadorActual => {
-    const trabajadorAnterior = detallesMesAnterior.find(trabajador => trabajador.ci === trabajadorActual.ci);
-    
-    // Si no se encuentra al trabajador en la planilla anterior y no tiene fecha de retiro, es una alta
-    if (!trabajadorAnterior) {
-      altas.push(trabajadorActual);
-    } else {
-      // Si el trabajador estaba en el mes anterior y ahora tiene fecha de retiro, es baja
-      if (trabajadorAnterior.fecha_retiro && trabajadorAnterior.fecha_retiro <= new Date()) {
+ /*  async compararPlanillas(cod_patronal: string, mesAnterior: string, gestion: string, mesActual: string) {
+    // Obtener los detalles de las planillas de los dos meses
+    const detallesMesAnterior = await this.obtenerDetallesDeMes(cod_patronal, mesAnterior, gestion);
+    const detallesMesActual = await this.obtenerDetallesDeMes(cod_patronal, mesActual, gestion);
+  
+    const altas = [];
+    const bajas = [];
+  
+    // Crear un mapa de los trabajadores del mes anterior basado en su CI
+    const trabajadoresMesAnterior = new Map(
+      detallesMesAnterior.map(trabajador => [trabajador.ci, trabajador])
+    );
+  
+    // Crear un mapa de los trabajadores del mes actual basado en su CI
+    const trabajadoresMesActual = new Map(
+      detallesMesActual.map(trabajador => [trabajador.ci, trabajador])
+    );
+  
+    // Detectar altas: trabajadores en el mes actual que no están en el mes anterior
+    detallesMesActual.forEach(trabajadorActual => {
+      if (!trabajadoresMesAnterior.has(trabajadorActual.ci)) {
+        altas.push(trabajadorActual);
+      }
+    });
+  
+    // Detectar bajas: trabajadores en el mes anterior que no están en el mes actual
+    detallesMesAnterior.forEach(trabajadorAnterior => {
+      if (!trabajadoresMesActual.has(trabajadorAnterior.ci)) {
         bajas.push(trabajadorAnterior);
       }
-    }
-  });
+    });
 
-  // Verificar bajas: trabajadores que no están en la planilla actual pero estaban en la anterior
-  detallesMesAnterior.forEach(trabajadorAnterior => {
-    const trabajadorActual = detallesMesActual.find(trabajador => trabajador.ci === trabajadorAnterior.ci);
-    // Si el trabajador no está en la planilla actual y tiene fecha de retiro, es baja
-    if (!trabajadorActual || (trabajadorAnterior.fecha_retiro && trabajadorAnterior.fecha_retiro <= new Date())) {
-      bajas.push(trabajadorAnterior);
-    }
-  });
+    console.log('Bajas detectadas:', bajas);
+  
+    return {
+      altas,
+      bajas,
+      mensaje: 'Comparación de planillas completada con corrección de bajas repetidas',
+    };
+  } */
 
-  return {
-    altas,
-    bajas,
-    mensaje: 'Comparación de planillas completada',
-  };
+    async compararPlanillas(cod_patronal: string, mesAnterior: string, gestion: string, mesActual: string) {
+      // Obtener los detalles de las planillas de los dos meses
+      const detallesMesAnterior = await this.obtenerDetallesDeMes(cod_patronal, mesAnterior, gestion);
+      const detallesMesActual = await this.obtenerDetallesDeMes(cod_patronal, mesActual, gestion);
+    
+      console.log('Detalles del mes anterior (enero):', detallesMesAnterior);
+      console.log('Detalles del mes actual (febrero):', detallesMesActual);
+    
+      const altas = [];
+      const bajas = [];
+    
+      // Crear un mapa de los trabajadores del mes anterior basado en su CI
+      const trabajadoresMesAnterior = new Map(
+        detallesMesAnterior.map(trabajador => [trabajador.ci, trabajador])
+      );
+    
+      // Crear un mapa de los trabajadores del mes actual basado en su CI
+      const trabajadoresMesActual = new Map(
+        detallesMesActual.map(trabajador => [trabajador.ci, trabajador])
+      );
+    
+      // Detectar altas: trabajadores en el mes actual que no están en el mes anterior
+      detallesMesActual.forEach(trabajadorActual => {
+        if (!trabajadoresMesAnterior.has(trabajadorActual.ci)) {
+          altas.push(trabajadorActual);
+        }
+      });
+    
+      // Detectar bajas
+      detallesMesAnterior.forEach(trabajadorAnterior => {
+        const trabajadorActual = trabajadoresMesActual.get(trabajadorAnterior.ci);
+      
+        if (!trabajadorActual) {
+          // Si el trabajador no está en el mes actual, es una baja
+          bajas.push(trabajadorAnterior);
+        } else if (trabajadorActual.fecha_retiro) {
+          // Si el trabajador tiene fecha de retiro en el mes actual
+          const fechaRetiroActual = new Date(trabajadorActual.fecha_retiro);
+      
+          // Verificar si la fecha de retiro es dentro del mes actual
+          const mesActualInicio = new Date(`${gestion}-${mesActual}-01`);
+          const mesActualFin = new Date(mesActualInicio);
+          mesActualFin.setMonth(mesActualFin.getMonth() + 1);
+      
+          console.log('Fecha de retiro actual:', fechaRetiroActual);
+          console.log('Mes actual inicio:', mesActualInicio);
+          console.log('Mes actual fin:', mesActualFin);
+      
+          if (fechaRetiroActual >= mesActualInicio && fechaRetiroActual < mesActualFin) {
+            // Si la fecha de retiro es dentro del mes actual, es una baja en el mes actual
+            bajas.push(trabajadorActual);
+          }
+        }
+      });
+    
+      console.log('Bajas detectadas:', bajas);
+    
+      return {
+        altas,
+        bajas,
+        mensaje: 'Comparación de planillas completada con corrección de bajas repetidas',
+      };
+    }
+
+// Método para generar el reporte de bajas con Carbone
+
+async generarReporteBajas(
+  id_planilla: number,
+  cod_patronal: string,
+  mesAnterior: string,
+  mesActual: string,
+  gestion: string
+): Promise<StreamableFile> {
+  try {
+    // Obtener la información de la planilla
+    const resultadoPlanilla = await this.obtenerPlanilla(id_planilla);
+    const planilla = resultadoPlanilla.planilla;
+
+    // Obtener las bajas para los meses comparados
+    const { bajas } = await this.compararPlanillas(
+      cod_patronal,
+      mesAnterior,
+      gestion,
+      mesActual
+    );
+
+    // Verificar si hay bajas
+    if (bajas.length === 0) {
+      throw new Error('No se encontraron bajas para generar el reporte.');
+    }
+
+    // Agrupar las bajas por regional
+    const bajasPorRegional = bajas.reduce((acc, baja) => {
+      const regional = baja.regional || 'Sin regional';
+      if (!acc[regional]) {
+        acc[regional] = {
+          regional,
+          bajas: [],
+        };
+      }
+      acc[regional].bajas.push({
+        nro: baja.nro,
+        ci: baja.ci,
+        nombreCompleto: `${baja.apellido_paterno} ${baja.apellido_materno} ${baja.nombres}`,
+        cargo: baja.cargo,
+        salario: baja.salario,
+        fechaRetiro: baja.fecha_retiro ? new Date(baja.fecha_retiro).toLocaleDateString() : 'No especificada',
+      });
+      return acc;
+    }, {});
+
+    // Convertir a un array de regiones para el JSON final
+    const data = {
+      planilla: {
+        com_nro: planilla.com_nro,
+        cod_patronal: planilla.cod_patronal,
+        empresa: planilla.empresa,
+        mes: planilla.mes,
+        gestion: planilla.gestion,
+        total_trabaj: planilla.total_trabaj,
+        total_importe: planilla.total_importe,
+        estado: planilla.estado,
+        fecha_creacion: planilla.fecha_creacion,
+        usuario_creacion: planilla.usuario_creacion,
+      },
+      reporte: Object.values(bajasPorRegional), // Ahora "reporte" solo tiene las bajas agrupadas por regional
+    };
+
+    console.log('Datos para el reporte:', JSON.stringify(data, null, 2));
+
+    // Ruta de la plantilla de reporte
+    const templatePath = path.resolve(
+      'src/modules/planillas_aportes/templates/bajas.docx',
+    );
+
+    // Generar el reporte con Carbone
+    return new Promise<StreamableFile>((resolve, reject) => {
+      carbone.render(
+        templatePath,
+        data, // ✅ Enviar directamente el JSON
+        { convertTo: 'pdf' },
+        (err, result) => {
+          if (err) {
+            console.error('Error en Carbone:', err);
+            return reject(new Error(`Error al generar el reporte con Carbone: ${err}`));
+          }
+
+          console.log('Reporte generado correctamente');
+
+          if (typeof result === 'string') {
+            result = Buffer.from(result, 'utf-8'); // Convierte el string a Buffer
+          }
+
+          // Devolver el archivo como un StreamableFile
+          resolve(new StreamableFile(result, {
+            type: 'application/pdf',
+            disposition: `attachment; filename=reporte_bajas_${cod_patronal}_${mesAnterior}_${mesActual}_${gestion}.pdf`,
+          }));
+        }
+      );
+    });
+  } catch (error) {
+    // Capturar y manejar la excepción
+    throw new Error('Error en generarReporteBajas: ' + error.message);
+  }
 }
-
-
-
-
 
 
 

@@ -1,8 +1,11 @@
-import { Controller, Post, Get, UseInterceptors, UploadedFile, BadRequestException, Body, Param, Put, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get,StreamableFile, UseInterceptors, UploadedFile, BadRequestException, Body, Param, Put, HttpException, HttpStatus, Res } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { PlanillasAportesService } from './planillas_aportes.service';
 import { ApiTags } from '@nestjs/swagger';
+import { Response } from 'express';
+
+
 
 @ApiTags('Planillas Aportes')
 @Controller('planillas_aportes')
@@ -104,6 +107,8 @@ export class PlanillasAportesController {
       return this.planillasAportesService.corregirPlanilla(id_planilla, body);
     }
 
+    // Nuevo endpoint para hacer la comparacion para obtener altas y bajas
+
     @Get('comparar/:cod_patronal/:gestion/:mesAnterior/:mesActual')
     async compararPlanillas(
       @Param('cod_patronal') cod_patronal: string,
@@ -119,6 +124,43 @@ export class PlanillasAportesController {
       );
     }
 
+    // Nuevo endpoint para generar el reporte de bajas
+    @Get('reporte-bajas/:id_planilla/:cod_patronal/:mesAnterior/:mesActual/:gestion')
+    async generarReporteBajas(
+      @Param('id_planilla') id_planilla: number,
+      @Param('cod_patronal') cod_patronal: string,
+      @Param('mesAnterior') mesAnterior: string,
+      @Param('mesActual') mesActual: string,
+      @Param('gestion') gestion: string,
+    ): Promise<StreamableFile> {
+      try {
+        // Llamar al servicio para generar el reporte de bajas
+        const fileBuffer = await this.planillasAportesService.generarReporteBajas(
+          id_planilla,
+          cod_patronal,
+          mesAnterior,
+          mesActual,
+          gestion,
+        );
+    
+        // Verificar que el reporte se haya generado correctamente
+        if (!fileBuffer) {
+          throw new Error('No se pudo generar el reporte.');
+        }
+    
+        // Devolver el archivo como un StreamableFile
+        return fileBuffer;
+      } catch (error) {
+        // Manejar el error y devolver un mensaje apropiado
+        throw new BadRequestException({
+          message: 'Error al generar el reporte de bajas',
+          details: error.message, // Incluir detalles del error
+        });
+      }
+    }
+
+
+    
 
 
 
