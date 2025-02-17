@@ -159,8 +159,31 @@ export class PlanillasAportesController {
       }
     }
 
+// Nuevo endpoint para generar el reporte en PDF usando Carbone
+@Get('reporte-planilla/:id_planilla')
+  async generarReportePlanilla(
+    @Param('id_planilla') id_planilla: number
+  ): Promise<StreamableFile> {
+    try {
+      // Llamamos al servicio que genera el PDF con los datos formateados
+      const fileBuffer = await this.planillasAportesService.generarReportePlanillaPorRegional(id_planilla);
 
-    
+      // Verificamos si se generó correctamente
+      if (!fileBuffer) {
+        throw new Error('No se pudo generar el reporte.');
+      }
+
+      // Retornamos el PDF como StreamableFile
+      return fileBuffer;
+    } catch (error) {
+      throw new BadRequestException({
+        message: 'Error al generar el reporte de planilla por regional',
+        details: error.message,
+      });
+    }
+
+
+  }
 
 
 

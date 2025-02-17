@@ -589,6 +589,130 @@ async generarReporteBajas(
 }
 
 
+async generarReportePlanillaPorRegional(
+  id_planilla: number
+): Promise<StreamableFile> {
+  try {
+    // Obtener la información de la planilla y sus detalles
+    const resultadoPlanilla = await this.obtenerPlanilla(id_planilla);
+    const detallesPlanilla = await this.obtenerDetalles(id_planilla);
+
+    if (!detallesPlanilla.trabajadores.length) {
+      throw new Error('No se encontraron trabajadores para generar el reporte.');
+    }
+
+    // Extraer la información de la planilla
+    const planilla = resultadoPlanilla.planilla;
+
+    // Variables para la sección "totales"
+    let totalCantidad = 0;
+    let totalGanado = 0;
+
+    // Agrupar los datos por regional
+    const regionalesMap = new Map();
+
+    detallesPlanilla.trabajadores.forEach(trabajador => {
+      const { regional, salario } = trabajador;
+      const salarioNum = parseFloat(salario.toString()); // Asegurar conversión a número
+
+      if (!regionalesMap.has(regional)) {
+        regionalesMap.set(regional, {
+          regional,
+          cantidad: 0,
+          total_ganado: 0,
+          porcentaje_10: 0
+        });
+      }
+
+      const regionalData = regionalesMap.get(regional);
+      regionalData.cantidad += 1;
+      regionalData.total_ganado += salarioNum;
+      regionalData.porcentaje_10 = parseFloat((regionalData.total_ganado * 0.10).toFixed(2)); // Redondeamos a 2 decimales
+
+      totalCantidad += 1;
+      totalGanado += salarioNum;
+    });
+
+    // Convertir el mapa a un array
+    const resumenArray = Array.from(regionalesMap.values());
+
+    // Crear la sección de totales separada
+    const totales = {
+      cantidad_total: totalCantidad,
+      total_ganado: parseFloat(totalGanado.toFixed(2)),
+      porcentaje_10: parseFloat((totalGanado * 0.10).toFixed(2))
+    };
+
+    // **Formato Correcto: Separar miles con coma y decimales con punto**
+    const formatNumber = (num: number) => new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(num);
+
+    // Aplicamos formato a todos los valores numéricos
+    const formattedResumen = resumenArray.map(region => ({
+      regional: region.regional,
+      cantidad: formatNumber(region.cantidad),  // Formato correcto
+      total_ganado: formatNumber(region.total_ganado),  // Formato correcto
+      porcentaje_10: formatNumber(region.porcentaje_10)  // Formato correcto
+    }));
+
+    const formattedTotales = {
+      cantidad_total: formatNumber(totales.cantidad_total),  // Formato correcto
+      total_ganado: formatNumber(totales.total_ganado),  // Formato correcto
+      porcentaje_10: formatNumber(totales.porcentaje_10)  // Formato correcto
+    };
+
+    // Estructura final del JSON con los totales separados y formato correcto
+    const data = {
+      mensaje: 'Detalles obtenidos con éxito',
+      planilla: planilla,
+      resumen: formattedResumen,
+      totales: formattedTotales
+    };
+
+    console.log('Datos para el reporte:', JSON.stringify(data, null, 2));
+
+    // Ruta de la plantilla de reporte en ODT
+    const templatePath = path.resolve(
+      'src/modules/planillas_aportes/templates/resumen.docx',
+    );
+
+    // Generar el reporte con Carbone
+    return new Promise<StreamableFile>((resolve, reject) => {
+      carbone.render(
+        templatePath,
+        data, // ✅ JSON con la estructura correcta y valores formateados
+        { convertTo: 'pdf' },
+        (err, result) => {
+          if (err) {
+            console.error('Error en Carbone:', err);
+            return reject(new Error(`Error al generar el reporte con Carbone: ${err}`));
+          }
+
+          console.log('Reporte generado correctamente');
+
+          if (typeof result === 'string') {
+            result = Buffer.from(result, 'utf-8'); // Convertir el string a Buffer
+          }
+
+          // Devolver el archivo como un StreamableFile con nombre basado en la planilla
+          resolve(new StreamableFile(result, {
+            type: 'application/pdf',
+            disposition: `attachment; filename=reporte_planilla_${planilla.cod_patronal}_${planilla.mes}_${planilla.gestion}.pdf`,
+          }));
+        }
+      );
+    });
+  } catch (error) {
+    throw new Error('Error en generarReportePlanillaPorRegional: ' + error.message);
+  }
+}
+
+
+
+
+
 
 
 
