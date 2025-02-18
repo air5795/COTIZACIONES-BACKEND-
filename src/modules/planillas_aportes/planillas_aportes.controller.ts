@@ -22,8 +22,8 @@ export class PlanillasAportesController {
         },
       }),
       fileFilter: (req, file, cb) => {
-        if (!file.originalname.match(/\.(xlsx|xls)$/)) {
-          return cb(new BadRequestException('Solo se permiten archivos Excel'), false);
+        if (!file.originalname.match(/\.(xlsx|xls|csv)$/)) {
+          return cb(new BadRequestException('Solo se permiten archivos Excel y CSV'), false);
         }
         cb(null, true);
       },

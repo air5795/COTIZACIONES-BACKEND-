@@ -9,6 +9,7 @@ import * as path from 'path';
 import * as carbone from 'carbone';
 
 
+
 @Injectable()
 export class PlanillasAportesService {
   constructor(
@@ -422,12 +423,32 @@ async obtenerDetallesDeMes(cod_patronal: string, mes: string, gestion: string) {
   } */
 
     async compararPlanillas(cod_patronal: string, mesAnterior: string, gestion: string, mesActual: string) {
+
+      // Si el mes anterior es diciembre, restar un año a la gestión
+      const gestionMesAnterior = mesAnterior === "DICIEMBRE" ? (parseInt(gestion) - 1).toString() : gestion;
+    
+      console.log(`Comparando planillas para:
+        - Cod Patronal: ${cod_patronal}
+        - Gestión Mes Anterior: ${gestionMesAnterior}
+        - Mes Anterior: ${mesAnterior}
+        - Gestión Mes Actual: ${gestion}
+        - Mes Actual: ${mesActual}`);
+    
       // Obtener los detalles de las planillas de los dos meses
-      const detallesMesAnterior = await this.obtenerDetallesDeMes(cod_patronal, mesAnterior, gestion);
+      const detallesMesAnterior = await this.obtenerDetallesDeMes(cod_patronal, mesAnterior, gestionMesAnterior);
       const detallesMesActual = await this.obtenerDetallesDeMes(cod_patronal, mesActual, gestion);
     
-      console.log('Detalles del mes anterior (enero):', detallesMesAnterior);
-      console.log('Detalles del mes actual (febrero):', detallesMesActual);
+      console.log('Detalles del mes anterior:', detallesMesAnterior);
+      console.log('Detalles del mes actual:', detallesMesActual);
+    
+      // Validar si hay datos en ambos meses
+      if (!detallesMesAnterior || detallesMesAnterior.length === 0) {
+        throw new Error(`No se encontraron datos para el mes anterior (${mesAnterior}) en la gestión ${gestionMesAnterior}.`);
+      }
+    
+      if (!detallesMesActual || detallesMesActual.length === 0) {
+        throw new Error(`No se encontraron datos para el mes actual (${mesActual}) en la gestión ${gestion}.`);
+      }
     
       const altas = [];
       const bajas = [];
@@ -452,23 +473,23 @@ async obtenerDetallesDeMes(cod_patronal: string, mes: string, gestion: string) {
       // Detectar bajas
       detallesMesAnterior.forEach(trabajadorAnterior => {
         const trabajadorActual = trabajadoresMesActual.get(trabajadorAnterior.ci);
-      
+    
         if (!trabajadorActual) {
           // Si el trabajador no está en el mes actual, es una baja
           bajas.push(trabajadorAnterior);
         } else if (trabajadorActual.fecha_retiro) {
           // Si el trabajador tiene fecha de retiro en el mes actual
           const fechaRetiroActual = new Date(trabajadorActual.fecha_retiro);
-      
+    
           // Verificar si la fecha de retiro es dentro del mes actual
           const mesActualInicio = new Date(`${gestion}-${mesActual}-01`);
           const mesActualFin = new Date(mesActualInicio);
           mesActualFin.setMonth(mesActualFin.getMonth() + 1);
-      
+    
           console.log('Fecha de retiro actual:', fechaRetiroActual);
           console.log('Mes actual inicio:', mesActualInicio);
           console.log('Mes actual fin:', mesActualFin);
-      
+    
           if (fechaRetiroActual >= mesActualInicio && fechaRetiroActual < mesActualFin) {
             // Si la fecha de retiro es dentro del mes actual, es una baja en el mes actual
             bajas.push(trabajadorActual);
@@ -476,6 +497,7 @@ async obtenerDetallesDeMes(cod_patronal: string, mes: string, gestion: string) {
         }
       });
     
+      console.log('Altas detectadas:', altas);
       console.log('Bajas detectadas:', bajas);
     
       return {
@@ -484,6 +506,7 @@ async obtenerDetallesDeMes(cod_patronal: string, mes: string, gestion: string) {
         mensaje: 'Comparación de planillas completada con corrección de bajas repetidas',
       };
     }
+    
 
 // Método para generar el reporte de bajas con Carbone
 
