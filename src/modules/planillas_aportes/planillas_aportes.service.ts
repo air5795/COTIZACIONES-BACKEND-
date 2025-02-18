@@ -103,6 +103,71 @@ export class PlanillasAportesService {
     return { mensaje: '✅ Planilla guardada con éxito', id_planilla: planillaGuardada.id_planilla_aportes };
 }
 
+async actualizarDetallesPlanilla(id_planilla: number, data: any[]) {
+  // Verificar si la planilla existe
+  const planilla = await this.planillaRepo.findOne({ where: { id_planilla_aportes: id_planilla } });
+
+  if (!planilla) {
+      throw new BadRequestException('❌ La planilla no existe.');
+  }
+
+  // ⚠️ 🔥 SOLO MODIFICAMOS LOS DETALLES, NO LA TABLA PRINCIPAL 🔥 ⚠️
+
+  // Filtrar datos vacíos en el backend
+  const datosValidos = data.filter(row => 
+      row['Número documento de identidad'] && row['Nombres'] && row['Haber Básico']
+  );
+
+  if (datosValidos.length === 0) {
+      throw new BadRequestException('❌ No se encontraron registros válidos en el archivo.');
+  }
+
+  // Eliminar los detalles anteriores
+  await this.detalleRepo.delete({ id_planilla_aportes: id_planilla });
+
+  // Calcular el total del importe sumando los salarios
+  const totalImporte = datosValidos.reduce((sum, row) => sum + parseFloat(row['Haber Básico'] || 0), 0);
+
+  // Calcular el número total de trabajadores
+  const totalTrabaj = datosValidos.length;
+
+  // Guardar los nuevos detalles de la planilla
+  const nuevosDetalles = datosValidos.map((row) => ({
+      id_planilla_aportes: id_planilla,
+      nro: row['Nro.'] || 0,
+      ci: row['Número documento de identidad'] || '',
+      apellido_paterno: row['Apellido Paterno'] || '',
+      apellido_materno: row['Apellido Materno'] || '',
+      nombres: row['Nombres'] || '',
+      sexo: row['Sexo (M/F)'] || '',
+      cargo: row['Cargo'] || '',
+      fecha_nac: row['Fecha de nacimiento'] ? new Date(1900, 0, row['Fecha de nacimiento'] - 1) : new Date('1900-01-01'),
+      fecha_ingreso: row['Fecha de ingreso'] ? new Date(1900, 0, row['Fecha de ingreso'] - 1) : new Date(),
+      fecha_retiro: row['Fecha Retiro'] ? new Date(1900, 0, row['Fecha Retiro'] - 1) : null,
+      dias_pagados: row['Días pagados'] || 0,
+      salario: row['Haber Básico'] ? parseFloat(row['Haber Básico'].toString()) || 0 : 0,
+      regional: row['regional'] || '',
+  }));
+
+  await this.detalleRepo.save(nuevosDetalles);
+
+  // 🔥 Solo actualizamos los campos necesarios en `planillas_aportes`, sin crear un nuevo registro
+  planilla.total_importe = totalImporte;
+  planilla.total_trabaj = totalTrabaj;
+
+  await this.planillaRepo.save(planilla);
+
+  return { 
+      mensaje: '✅ Detalles de la planilla actualizados con éxito',
+      total_importe: totalImporte,
+      total_trabajadores: totalTrabaj
+  };
+}
+
+
+
+
+
 
 async obtenerHistorial(cod_patronal: string) {
   const planillas = await this.planillaRepo.find({
@@ -279,6 +344,25 @@ async actualizarEstadoPlanilla(id_planilla: number, estado: number, observacione
 
   return { mensaje: 'Estado de la planilla actualizado correctamente' };
 }
+
+// Método para eliminar detalles de una planilla
+
+async eliminarDetallesPlanilla(id_planilla: number) {
+  // Verificar si la planilla existe
+  const planilla = await this.planillaRepo.findOne({ where: { id_planilla_aportes: id_planilla } });
+
+  if (!planilla) {
+      throw new BadRequestException('La planilla no existe.');
+  }
+
+  // Eliminar los detalles de la planilla (pero no la cabecera)
+  await this.detalleRepo.delete({ id_planilla_aportes: id_planilla });
+
+  return { mensaje: '✅ Detalles de la planilla eliminados con éxito' };
+}
+
+
+
 
 
 async obtenerPlanillasObservadas(cod_patronal: string) {

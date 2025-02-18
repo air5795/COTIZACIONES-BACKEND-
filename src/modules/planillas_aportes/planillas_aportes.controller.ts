@@ -1,4 +1,4 @@
-import { Controller, Post, Get,StreamableFile, UseInterceptors, UploadedFile, BadRequestException, Body, Param, Put, HttpException, HttpStatus, Res } from '@nestjs/common';
+import { Controller, Post, Get,StreamableFile, UseInterceptors, UploadedFile, BadRequestException, Body, Param, Put, HttpException, HttpStatus, Res, Delete } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { PlanillasAportesService } from './planillas_aportes.service';
@@ -38,6 +38,22 @@ export class PlanillasAportesController {
       const data = this.planillasAportesService.procesarExcel(file.path);
       return this.planillasAportesService.guardarPlanilla(data, body.cod_patronal, body.gestion, body.mes, body.empresa,);
     }
+
+    @Put('detalles/:id_planilla')
+    async actualizarDetallesPlanilla(
+        @Param('id_planilla') id_planilla: number,
+        @Body() body
+    ) {
+        try {
+            return await this.planillasAportesService.actualizarDetallesPlanilla(id_planilla, body.trabajadores);
+        } catch (error) {
+            throw new HttpException({
+                status: HttpStatus.BAD_REQUEST,
+                error: error.message,
+            }, HttpStatus.BAD_REQUEST);
+        }
+    }
+
 
     // Nuevo endpoint para obtener el historial de planillas de una empresa
     @Get('historial/:cod_patronal')
@@ -90,6 +106,21 @@ export class PlanillasAportesController {
     ) {
       return this.planillasAportesService.actualizarEstadoPlanilla(id_planilla, body.estado, body.observaciones);
     }
+
+    // Nuevo endpoint para eliminar detalles de una planilla
+    @Delete('detalles/:id_planilla')
+    async eliminarDetallesPlanilla(@Param('id_planilla') id_planilla: number) {
+        try {
+            return await this.planillasAportesService.eliminarDetallesPlanilla(id_planilla);
+        } catch (error) {
+            throw new HttpException({
+                status: HttpStatus.BAD_REQUEST,
+                error: error.message,
+            }, HttpStatus.BAD_REQUEST);
+        }
+    }
+    
+    
 
     // Nuevo endpoint para obtener planillas observadas por la entidad CBES
     @Get('observadas/:cod_patronal')
