@@ -5,13 +5,22 @@ import {
   Logger,
   ValidationPipe,
 } from '@nestjs/common';
-
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+
+// Importamos express y body-parser
+import * as express from 'express';
+import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('bootstrap');
-  //app.setGlobalPrefix('api/security/v1');
+
+  // Aumentar el límite del tamaño del request
+  app.use(express.json({ limit: '50mb' })); 
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  app.use(bodyParser.json({ limit: '50mb' })); 
+  app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+
   app.useGlobalPipes(
     new ValidationPipe({
       transformOptions: { enableImplicitConversion: true },
@@ -41,4 +50,5 @@ async function bootstrap() {
     `API-SisAdmin Ready: Development on Line! on PORT: ${process.env.PORT}`,
   );
 }
+
 bootstrap();
