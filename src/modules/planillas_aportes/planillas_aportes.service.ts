@@ -230,6 +230,40 @@ async obtenerTodoHistorial() {
   }
 }
 
+async obtenerTodo(pagina: number = 1, limite: number = 10, busqueda: string = '') {
+  try {
+    const skip = (pagina - 1) * limite;
+
+    const query = this.planillaRepo.createQueryBuilder('planilla')
+      .orderBy('planilla.fecha_creacion', 'DESC')
+      .skip(skip)
+      .take(limite);
+
+    if (busqueda) {
+      query.where(
+        'planilla.empresa LIKE :busqueda OR planilla.cod_patronal LIKE :busqueda OR planilla.mes LIKE :busqueda OR planilla.gestion LIKE :busqueda',
+        { busqueda: `%${busqueda}%` }
+      );
+    }
+
+    const [planillas, total] = await query.getManyAndCount();
+
+    if (!planillas.length) {
+      return { mensaje: 'No hay planillas registradas', planillas: [], total: 0 };
+    }
+
+    return {
+      mensaje: 'Historial obtenido con éxito',
+      planillas,
+      total,
+      pagina,
+      limite
+    };
+  } catch (error) {
+    throw new Error('Error al obtener el historial de planillas de aportes completo');
+  }
+}
+
 async obtenerPlanilla(id_planilla: number) {
   const planilla = await this.planillaRepo.findOne({ where: { id_planilla_aportes: id_planilla } });
 

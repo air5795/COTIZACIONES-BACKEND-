@@ -1,4 +1,4 @@
-import { Controller, Post, Get,StreamableFile, UseInterceptors, UploadedFile, BadRequestException, Body, Param, Put, HttpException, HttpStatus, Res, Delete } from '@nestjs/common';
+import { Controller, Post, Get,StreamableFile, UseInterceptors, UploadedFile, BadRequestException, Body, Param, Put, HttpException, HttpStatus, Res, Delete, Query } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { PlanillasAportesService } from './planillas_aportes.service';
@@ -59,6 +59,23 @@ export class PlanillasAportesController {
     @Get('historial/:cod_patronal')
     async obtenerHistorial(@Param('cod_patronal') cod_patronal: string) {
       return this.planillasAportesService.obtenerHistorial(cod_patronal);
+    }
+
+    // Nuevo endpoint para obtener todo el historial de planillas de aportes completo sin estados
+    @Get('historial-completo')
+    async obtenerTodo(
+      @Query('pagina') pagina: number = 1,
+      @Query('limite') limite: number = 10,
+      @Query('busqueda') busqueda: string = ''
+    ) {
+      try {
+        return await this.planillasAportesService.obtenerTodo(pagina, limite, busqueda);
+      } catch (error) {
+        throw new HttpException({
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: 'Error al obtener el historial de planillas completo sin estados',
+        }, HttpStatus.INTERNAL_SERVER_ERROR);
+      }
     }
 
     // Nuevo endpoint para obtener todo el historial de planillas
