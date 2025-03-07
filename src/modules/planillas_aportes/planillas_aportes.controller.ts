@@ -2,7 +2,7 @@ import { Controller, Post, Get,StreamableFile, UseInterceptors, UploadedFile, Ba
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { PlanillasAportesService } from './planillas_aportes.service';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 
 
@@ -12,6 +12,7 @@ import { Response } from 'express';
 export class PlanillasAportesController {
   constructor(private readonly planillasAportesService: PlanillasAportesService) {}
 
+// 1.-  Endpoint para subir un archivo Excel con la planilla de aportes ----------------------------------------------
   @Post('subir')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -31,13 +32,16 @@ export class PlanillasAportesController {
   )
 
 
-    // Nuevo endpoint para subir un archivo Excel con la planilla de aportes
+// 2.-  Endpoint para subir un archivo Excel con la planilla de aportes---------------------------------------------------
+    
     async uploadFile(@UploadedFile() file: Express.Multer.File, @Body() body) {
       if (!file) throw new BadRequestException('No se recibió ningún archivo');
 
       const data = this.planillasAportesService.procesarExcel(file.path);
       return this.planillasAportesService.guardarPlanilla(data, body.cod_patronal, body.gestion, body.mes, body.empresa,);
     }
+
+  // 3.- Endpoint para actualizar los detalles de una planilla de aportes-----------------------------------------------------
 
     @Put('detalles/:id_planilla')
     async actualizarDetallesPlanilla(
@@ -54,14 +58,32 @@ export class PlanillasAportesController {
         }
     }
 
+// 4.- Endpoint para obtener todas las planillas de aportes de una empresa------------------------------------------------------
 
-    // Nuevo endpoint para obtener el historial de planillas de una empresa
-    @Get('historial/:cod_patronal')
-    async obtenerHistorial(@Param('cod_patronal') cod_patronal: string) {
-      return this.planillasAportesService.obtenerHistorial(cod_patronal);
+@Get('historial/:cod_patronal')
+  async obtenerHistorial(
+    @Param('cod_patronal') cod_patronal: string,
+    @Query('pagina') pagina: number = 1,
+    @Query('limite') limite: number = 10,
+    @Query('busqueda') busqueda: string = '',
+    @Query('mes') mes?: string,  // Nuevo parámetro
+    @Query('anio') anio?: string  // Nuevo parámetro
+  ) {
+    try {
+      return await this.planillasAportesService.obtenerHistorial(cod_patronal, pagina, limite, busqueda, mes, anio);
+    } catch (error) {
+      throw new HttpException(
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: 'Error al obtener el historial de planillas',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
+  }
 
-    // Nuevo endpoint para obtener todo el historial de planillas de aportes completo sin estados
+// 5.- Endpoint para obtener todas las planillas de aportes de una empresa por gestion-------------------------------------------
+
     @Get('historial-completo')
     async obtenerTodo(
       @Query('pagina') pagina: number = 1,
@@ -77,8 +99,8 @@ export class PlanillasAportesController {
         }, HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
+// 6.- Nuevo endpoint para obtener todo el historial de planillas --------------------------------------------------------------
 
-    // Nuevo endpoint para obtener todo el historial de planillas
     @Get('historial')
     async obtenerTodoHistorial() {
       try {
@@ -97,10 +119,24 @@ export class PlanillasAportesController {
       return this.planillasAportesService.obtenerPlanilla(id_planilla);
     }
 
-    // Nuevo endpoint para obtener los detalles de una planilla específica
+    // Obtener los detalles de una planilla específica
+
     @Get('detalles/:id_planilla')
-    async obtenerDetalles(@Param('id_planilla') id_planilla: number) {
-      return this.planillasAportesService.obtenerDetalles(id_planilla);
+    @ApiQuery({ name: 'busqueda', required: false, type: String, description: 'Término de búsqueda (opcional)' })
+    async obtenerDetalles(
+      @Param('id_planilla') id_planilla: number,
+      @Query('pagina') pagina: number = 1,
+      @Query('limite') limite: number = 10,
+      @Query('busqueda') busqueda: string = ''
+    ) {
+      try {
+        return await this.planillasAportesService.obtenerDetalles(id_planilla, pagina, limite, busqueda);
+      } catch (error) {
+        throw new HttpException({
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: 'Error al obtener los detalles de la planilla',
+        }, HttpStatus.INTERNAL_SERVER_ERROR);
+      }
     }
 
     // Nuevo endpoint para obtener los detalles de una planilla específica y por regional
@@ -162,33 +198,27 @@ export class PlanillasAportesController {
       @Param('cod_patronal') cod_patronal: string,
       @Param('gestion') gestion: string,
       @Param('mesAnterior') mesAnterior: string,
-      @Param('mesActual') mesActual: string
+      @Param('mesActual') mesActual: string,
     ) {
       return await this.planillasAportesService.compararPlanillas(
         cod_patronal,
         mesAnterior,
         gestion,
-        mesActual
+        mesActual,
       );
     }
 
     // Nuevo endpoint para generar el reporte de bajas
-    @Get('reporte-bajas/:id_planilla/:cod_patronal/:mesAnterior/:mesActual/:gestion')
+    @Get('reporte-bajas/:id_planilla/:cod_patronal')
     async generarReporteBajas(
       @Param('id_planilla') id_planilla: number,
       @Param('cod_patronal') cod_patronal: string,
-      @Param('mesAnterior') mesAnterior: string,
-      @Param('mesActual') mesActual: string,
-      @Param('gestion') gestion: string,
     ): Promise<StreamableFile> {
       try {
         // Llamar al servicio para generar el reporte de bajas
         const fileBuffer = await this.planillasAportesService.generarReporteBajas(
           id_planilla,
-          cod_patronal,
-          mesAnterior,
-          mesActual,
-          gestion,
+          cod_patronal
         );
     
         // Verificar que el reporte se haya generado correctamente
@@ -196,13 +226,11 @@ export class PlanillasAportesController {
           throw new Error('No se pudo generar el reporte.');
         }
     
-        // Devolver el archivo como un StreamableFile
         return fileBuffer;
       } catch (error) {
-        // Manejar el error y devolver un mensaje apropiado
         throw new BadRequestException({
           message: 'Error al generar el reporte de bajas',
-          details: error.message, // Incluir detalles del error
+          details: error.message,
         });
       }
     }
@@ -233,6 +261,31 @@ export class PlanillasAportesController {
 
   }
 
+  // Nuevo endpoint para obtener los datos de la planilla por regional
+
+  @Get('datos-planilla/:id_planilla')
+async obtenerDatosPlanilla(
+  @Param('id_planilla') id_planilla: number
+): Promise<any> {
+  try {
+    const datos = await this.planillasAportesService.obtenerDatosPlanillaPorRegional(id_planilla);
+    
+    if (!datos) {
+      throw new Error('No se pudieron obtener los datos de la planilla.');
+    }
+
+    return {
+      success: true,
+      data: datos
+    };
+  } catch (error) {
+    throw new BadRequestException({
+      success: false,
+      message: 'Error al obtener los datos de la planilla por regional',
+      details: error.message,
+    });
+  }
+}
 
 
 }

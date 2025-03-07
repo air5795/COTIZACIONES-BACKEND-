@@ -22,8 +22,7 @@ export class PlanillasAporte {
     @Column()
     empresa: string;
     
-
-    @Column()
+    @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
     total_importe: number;
 
     @Column()
@@ -40,6 +39,9 @@ export class PlanillasAporte {
 
     @Column()
     observaciones: string;
+
+    @Column()
+    fecha_planilla: Date;
 
     
 
