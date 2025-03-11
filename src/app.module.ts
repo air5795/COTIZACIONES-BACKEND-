@@ -33,6 +33,7 @@ import { UsuarioCotizacionesModule } from './modules/usuario-cotizaciones/usuari
 import { ReportesMensualesModule } from './modules/reportes-mensuales/reportes-mensuales.module';
 import { ParClasificadorDetalleModule } from './modules/parametro/par-clasificador-detalle.module';
 import { PlanillasAportesModule } from './modules/planillas_aportes/planillas_aportes.module';
+import { PlanillasAdicionalesModule } from './modules/planillas_adicionales/planillas_adicionales.module';
 
 const db = `postgres://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}?sslmode=disable`;
 
@@ -79,7 +80,8 @@ const db = `postgres://${process.env.DB_USER}:${process.env.DB_PASS}@${process.e
     UsuarioCotizacionesModule,
     ReportesMensualesModule,
     ParClasificadorDetalleModule,
-    PlanillasAportesModule
+    PlanillasAportesModule,
+    PlanillasAdicionalesModule
   ],
   controllers: [],
   providers: [],

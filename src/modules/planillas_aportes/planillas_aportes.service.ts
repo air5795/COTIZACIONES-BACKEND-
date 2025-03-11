@@ -57,7 +57,6 @@ export class PlanillasAportesService {
 
 async guardarPlanilla(data: any[], cod_patronal: string, gestion: string, mes: string, empresa: string) {
   const fechaPlanilla = new Date(`${gestion}-${mes.padStart(2, '0')}-01`);
-
   const existePlanilla = await this.planillaRepo.findOne({
     where: { cod_patronal, fecha_planilla: fechaPlanilla }
   });
@@ -84,7 +83,8 @@ async guardarPlanilla(data: any[], cod_patronal: string, gestion: string, mes: s
     empresa,
     total_importe: totalImporte,
     total_trabaj: totalTrabaj,
-    estado: 1,
+    estado: 0,
+    fecha_declarada: null,
   });
 
   const planillaGuardada = await this.planillaRepo.save(nuevaPlanilla);
@@ -162,7 +162,7 @@ async actualizarDetallesPlanilla(id_planilla: number, data: any[]) {
     cargo: row['Cargo'] || '',
     fecha_nac: row['Fecha de nacimiento'] ? new Date(1900, 0, row['Fecha de nacimiento'] - 1) : new Date('1900-01-01'),
     fecha_ingreso: row['Fecha de ingreso'] ? new Date(1900, 0, row['Fecha de ingreso'] - 1) : new Date(),
-    fecha_retiro: row['Fecha Retiro'] ? new Date(1900, 0, row['Fecha Retiro'] - 1) : null,
+    fecha_retiro: row['Fecha de retiro'] ? new Date(1900, 0, row['Fecha de retiro'] - 1) : null,
     dias_pagados: row['Días pagados'] || 0,
     haber_basico: parseFloat(row['Haber Básico'] || '0'),
     bono_antiguedad: parseFloat(row['Bono de antigüedad'] || '0'),
@@ -189,7 +189,7 @@ async actualizarDetallesPlanilla(id_planilla: number, data: any[]) {
   return { 
     mensaje: '✅ Detalles de la planilla actualizados con éxito',
     total_importe: totalImporte,
-    total_trabajadores: totalTrabaj
+    total_trabajadores: totalTrabaj,
   };
 }
 
@@ -210,6 +210,7 @@ async obtenerHistorial(cod_patronal: string,pagina: number = 1,limite: number = 
         'planilla.total_trabaj',
         'planilla.estado',
         'planilla.fecha_creacion',
+        'planilla.fecha_declarada',
       ])
       .skip(skip)
       .take(limite);
@@ -449,6 +450,23 @@ async obtenerPlanillasPendientes() {
   };
 }
 
+// Metodo para actualizar el estado de una planilla a Pendiente (ESTADO 1)
+async actualizarEstadoAPendiente(id_planilla: number) {
+  const planilla = await this.planillaRepo.findOne({ where: { id_planilla_aportes: id_planilla } });
+
+  if (!planilla) {
+    throw new BadRequestException('La planilla no existe');
+  }
+
+  planilla.estado = 1;
+  planilla.fecha_declarada =  new Date();
+
+  await this.planillaRepo.save(planilla);
+
+  return { mensaje: 'Estado de la planilla actualizado a Pendiente correctamente' };
+}
+
+// Metodo para aprobar u observar una planilla (ESTADO 2 o 3)
 async actualizarEstadoPlanilla(id_planilla: number, estado: number, observaciones?: string) {
   const planilla = await this.planillaRepo.findOne({ where: { id_planilla_aportes: id_planilla } });
 
@@ -473,16 +491,12 @@ async actualizarEstadoPlanilla(id_planilla: number, estado: number, observacione
 }
 
 // Método para eliminar detalles de una planilla
-
 async eliminarDetallesPlanilla(id_planilla: number) {
-  // Verificar si la planilla existe
   const planilla = await this.planillaRepo.findOne({ where: { id_planilla_aportes: id_planilla } });
 
   if (!planilla) {
       throw new BadRequestException('La planilla no existe.');
   }
-
-  // Eliminar los detalles de la planilla (pero no la cabecera)
   await this.detalleRepo.delete({ id_planilla_aportes: id_planilla });
 
   return { mensaje: '✅ Detalles de la planilla eliminados con éxito' };

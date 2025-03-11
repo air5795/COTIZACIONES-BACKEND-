@@ -1,12 +1,17 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { PlanillasAdicionale } from './planillas_adicionale.entity';
 
-@Entity({ schema: 'transversales', name: 'planilla_aportes_detalles' })
-export class PlanillaAportesDetalles {
+@Entity({ schema: 'transversales', name: 'planilla_adicional_detalles' })
+export class PlanillaAdicionalDetalles {
   @PrimaryGeneratedColumn()
-  id_planilla_aportes_detalles: number;
+  id_planilla_adicional_detalles: number;
 
   @Column()
-  id_planilla_aportes: number;
+  id_planilla_adicional: number;
+
+  @ManyToOne(() => PlanillasAdicionale, (planilla) => planilla.id_planilla_adicional, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'id_planilla_adicional' })
+  planillaAdicional: PlanillasAdicionale;
 
   @Column()
   nro: number;
@@ -61,7 +66,4 @@ export class PlanillaAportesDetalles {
 
   @Column()
   regional: string;
-
-  
-
 }

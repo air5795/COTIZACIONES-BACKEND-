@@ -151,7 +151,15 @@ export class PlanillasAportesController {
       return this.planillasAportesService.obtenerPlanillasPendientes();
     }
 
-    // Nuevo endpoint para actualizar el estado de una planilla
+    // Nuevo endpoint para actualizar el estado de una planilla a pendiente (estado = 1)
+    @Put('estado/pendiente/:id_planilla')
+    async actualizarEstadoAPendiente(
+      @Param('id_planilla') id_planilla: number
+    ) {
+      return this.planillasAportesService.actualizarEstadoAPendiente(id_planilla);
+    }
+
+    // Nuevo endpoint para actualizar el estado de una planilla (estado = 2 o 3)
     @Put('estado/:id_planilla')
     async actualizarEstadoPlanilla(
       @Param('id_planilla') id_planilla: number,

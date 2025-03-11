@@ -43,7 +43,8 @@ export class PlanillasAporte {
     @Column()
     fecha_planilla: Date;
 
-    
+    @Column()
+    fecha_declarada: Date;
 
 
 }
