@@ -35,8 +35,8 @@ export class PlanillasAportesService {
       );
     }
 
-// 1 .-  PROCESAR EXCEL -------------------------------------------------------------------------------------------------------
-  procesarExcel(filePath: string) {
+// 1 .-  PROCESAR EXCEL DE APORTES-------------------------------------------------------------------------------------------------------
+procesarExcel(filePath: string) {
     try {
       const workbook = xlsx.readFile(filePath);
       const sheetName = workbook.SheetNames[0];  
@@ -52,9 +52,7 @@ export class PlanillasAportesService {
       throw new BadRequestException('Error al procesar el archivo Excel');
     }
   }
-
-// 2 .- GUARDAR PLANILLA -------------------------------------------------------------------------------------------------------
-
+// 2 .- GUARDAR PLANILLA DE APORTES -------------------------------------------------------------------------------------------------------
 async guardarPlanilla(data: any[], cod_patronal: string, gestion: string, mes: string, empresa: string) {
   const fechaPlanilla = new Date(`${gestion}-${mes.padStart(2, '0')}-01`);
   const existePlanilla = await this.planillaRepo.findOne({
@@ -121,7 +119,7 @@ async guardarPlanilla(data: any[], cod_patronal: string, gestion: string, mes: s
 
   return { mensaje: '✅ Planilla guardada con éxito', id_planilla: planillaGuardada.id_planilla_aportes };
 }
-
+// 3 .- ACTUALIZAR DETALLES DE PLANILLA DE APORTES -------------------------------------------------------------------------------------------------------
 async actualizarDetallesPlanilla(id_planilla: number, data: any[]) {
   const planilla = await this.planillaRepo.findOne({ where: { id_planilla_aportes: id_planilla } });
 
@@ -192,8 +190,15 @@ async actualizarDetallesPlanilla(id_planilla: number, data: any[]) {
     total_trabajadores: totalTrabaj,
   };
 }
-
-async obtenerHistorial(cod_patronal: string,pagina: number = 1,limite: number = 10,busqueda: string = '',mes?: string, anio?: string  ) {
+// 4 .- OBTENER HISTORIAL DETALLADO PAGINACION Y BUSQUEDA DE TABLA PLANILLAS DE APORTES -------------------------------------------------------------------------------------------------------
+async obtenerHistorial(
+  cod_patronal: string,
+  pagina: number = 1,
+  limite: number = 10,
+  busqueda: string = ''
+  ,mes?: string, 
+  anio?: string  
+) {
   try {
     const skip = (pagina - 1) * limite;
 
@@ -266,7 +271,7 @@ async obtenerHistorial(cod_patronal: string,pagina: number = 1,limite: number = 
     throw new Error('Error al obtener el historial de planillas');
   }
 }
-
+// 5 .- OBTENER HISTORIAL DE TABLA PLANILLAS DE APORTES CUANDO ESTADO = 1 (presentadas) -------------------------------------------------------------------------------------------------------
 async obtenerTodoHistorial() {
   try {
     const planillas = await this.planillaRepo.find({
@@ -298,7 +303,7 @@ async obtenerTodoHistorial() {
     throw new Error('Error al obtener el historial de planillas');
   }
 }
-
+// 6 .- OBTENER HISTORIAL TOTAL PLANILLA DE APORTES -------------------------------------------------------------------------------------------------------
 async obtenerTodo(pagina: number = 1, limite: number = 10, busqueda: string = '') {
   try {
     const skip = (pagina - 1) * limite;
@@ -332,7 +337,7 @@ async obtenerTodo(pagina: number = 1, limite: number = 10, busqueda: string = ''
     throw new Error('Error al obtener el historial de planillas de aportes completo');
   }
 }
-
+// 7 .- OBTENER PLANILLA DE APORTES POR ID (ASINCRONO SIN PAGINACION) -------------------------------------------------------------------------------------------------------
 async obtenerPlanilla(id_planilla: number) {
   const planilla = await this.planillaRepo.findOne({ where: { id_planilla_aportes: id_planilla } });
 
@@ -342,7 +347,7 @@ async obtenerPlanilla(id_planilla: number) {
 
   return { mensaje: 'Planilla obtenida con éxito', planilla };
 }
-
+// 8.- OBTENER DETALLES DE PLANILLA DE APORTES POR ID DE PLANILLA (TIENE PAGINACION Y BUSQUEDA)-------------------------------------------------------------------------------------------------------
 async obtenerDetalles(id_planilla: number, pagina: number = 1, limite: number = 10, busqueda: string = '') {
   try {
     const skip = limite > 0 ? (pagina - 1) * limite : 0; // Si limite es 0, no paginar
@@ -402,7 +407,7 @@ async obtenerDetalles(id_planilla: number, pagina: number = 1, limite: number = 
     throw new Error('Error al obtener los detalles de la planilla');
   }
 }
-
+// 9.- OBSERVAR DETALLES DE PLANILLA DE APORTES POR REGIONAL -------------------------------------------------------------------------------------------------------
 async obtenerDetallesPorRegional(id_planilla: number, regional: string) {
   const detalles = await this.detalleRepo.find({
     where: { id_planilla_aportes: id_planilla, regional },
@@ -437,10 +442,10 @@ async obtenerDetallesPorRegional(id_planilla: number, regional: string) {
     trabajadores: detalles
   };
 }
-
+// 10.- OBTENER PLANILLAS PENDIENTES O PRESENTADAS ESTADO = 1  -------------------------------------------------------------------------------------------------------
 async obtenerPlanillasPendientes() {
   const planillas = await this.planillaRepo.find({
-    where: { estado: 1 }, // Solo las pendientes
+    where: { estado: 1 },
     order: { fecha_creacion: 'DESC' }
   });
 
@@ -449,8 +454,7 @@ async obtenerPlanillasPendientes() {
     planillas
   };
 }
-
-// Metodo para actualizar el estado de una planilla a Pendiente (ESTADO 1)
+// 11 .- ACTUALIZAR EL ESTADO DE UNA PLANILLA A PRESENTADO O PENDIENTE = 1 -------------------------------------------------------------------------------------------------------
 async actualizarEstadoAPendiente(id_planilla: number) {
   const planilla = await this.planillaRepo.findOne({ where: { id_planilla_aportes: id_planilla } });
 
@@ -466,7 +470,7 @@ async actualizarEstadoAPendiente(id_planilla: number) {
   return { mensaje: 'Estado de la planilla actualizado a Pendiente correctamente' };
 }
 
-// Metodo para aprobar u observar una planilla (ESTADO 2 o 3)
+// 12 .- ACTUALIZAR METODO PARA APROBAR U OBSERVAR LA PLANILLA (ESTADO 2 o 3)- -------------------------------------------------------------------------------------------------------
 async actualizarEstadoPlanilla(id_planilla: number, estado: number, observaciones?: string) {
   const planilla = await this.planillaRepo.findOne({ where: { id_planilla_aportes: id_planilla } });
 
@@ -490,7 +494,7 @@ async actualizarEstadoPlanilla(id_planilla: number, estado: number, observacione
   return { mensaje: 'Estado de la planilla actualizado correctamente' };
 }
 
-// Método para eliminar detalles de una planilla
+// 13.-  ELIMINAR DETALLES DE UNA PLANILLA -  -------------------------------------------------------------------------------------------------------
 async eliminarDetallesPlanilla(id_planilla: number) {
   const planilla = await this.planillaRepo.findOne({ where: { id_planilla_aportes: id_planilla } });
 
@@ -501,7 +505,7 @@ async eliminarDetallesPlanilla(id_planilla: number) {
 
   return { mensaje: '✅ Detalles de la planilla eliminados con éxito' };
 }
-
+// 14 .- OBTENER PLANILLAS DE APORTES OBSERVADAS (ESTADO = 3) -------------------------------------------------------------------------------------------------------
 async obtenerPlanillasObservadas(cod_patronal: string) {
   const planillas = await this.planillaRepo.find({
     where: { cod_patronal, estado: 3 }, // Solo las observadas (rechazadas)

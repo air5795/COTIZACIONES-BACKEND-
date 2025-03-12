@@ -29,14 +29,12 @@ export class ExternalApiService {
         );
 
         this.apiToken = response.data.token;
-        console.log("Token recibido:", this.apiToken); 
 
     } catch (error) {
-        console.error("Error al iniciar sesión en la API externa:", error);
         return {
             status: false,
             data: null,
-            message: `Error al iniciar sesión en la API externa: ${error}`,
+            message: `Error al iniciar sesión en la API externa`,
         };
     }
 }
@@ -55,7 +53,7 @@ export class ExternalApiService {
     }
 
     const url = `${this.baseUrl}/modelo/getEmpresaByNroPatronal/${npatronal}`;
-    console.log("URL de consulta:", url);
+
 
     try {
       const response = await firstValueFrom(

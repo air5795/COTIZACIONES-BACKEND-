@@ -30,4 +30,7 @@ export class PlanillasAdicionale {
     @Column()
     motivo_adicional: string;
 
+    @Column()
+    fecha_declarada: Date;
+
 }
