@@ -534,7 +534,7 @@ async obtenerPlanillasObservadas(cod_patronal: string) {
     planillas
   };
 }
-
+// 15 .- MANDAR CORREGIDA PLANILLA DE APORTES OBSERVADA A ADMINSTRADOR CBES CUANDO (ESTADO = 3) -------------------------------------------------------------------------------------------------------
 async corregirPlanilla(id_planilla: number, data: any) {
   // Buscar la planilla
   const planilla = await this.planillaRepo.findOne({ where: { id_planilla_aportes: id_planilla } });
@@ -584,7 +584,7 @@ async corregirPlanilla(id_planilla: number, data: any) {
   return { mensaje: 'Planilla corregida y reenviada para validación', total_importe: totalImporteCalculado };
 }
 
-// OBTENER DETALLES DE PLANILLA POR MES Y GESTION
+// 16.- (METODO AYUDA) OBTENER DETALLES DE PLANILLA POR MES Y GESTION -------------------------------------------------------------------------------------------------------
 async obtenerDetallesDeMes(cod_patronal: string, mes: string, gestion: string) {
   const fechaPlanilla = new Date(`${gestion}-${mes.padStart(2, '0')}-01`);
   const planilla = await this.planillaRepo.findOne({
@@ -603,7 +603,7 @@ async obtenerDetallesDeMes(cod_patronal: string, mes: string, gestion: string) {
   return detalles;
 }
 
-// Método para comparar planillas de dos meses y detectar altas y bajas
+// 17.- Método para comparar planillas de dos meses y detectar altas y bajas -------------------------------------------------------------------------------------------------------
 async compararPlanillas(cod_patronal: string, mesAnterior: string, gestion: string, mesActual: string) {
   // Convertir los meses a números
   const mesAnteriorNum = parseInt(mesAnterior, 10);
@@ -714,7 +714,7 @@ async compararPlanillas(cod_patronal: string, mesAnterior: string, gestion: stri
   };
 }
     
-// Método para generar el reporte de bajas con Carbone
+// 18.-  Método para generar el reporte de bajas con Carbone -------------------------------------------------------------------------------------------------------
 async generarReporteBajas(id_planilla: number,cod_patronal: string): Promise<StreamableFile> {
   try {
     // Obtener la información de la planilla
@@ -819,6 +819,7 @@ async generarReporteBajas(id_planilla: number,cod_patronal: string): Promise<Str
   }
 }
 
+// 19.- Método para generar REPORTE POR REGIONAL RESUMEN -------------------------------------------------------------------------------------------------------
 async generarReportePlanillaPorRegional(id_planilla: number): Promise<StreamableFile> {
   try {
     // Obtener la información de la planilla y sus detalles
@@ -829,10 +830,9 @@ async generarReportePlanillaPorRegional(id_planilla: number): Promise<Streamable
       throw new Error('No se encontraron trabajadores para generar el reporte.');
     }
 
-    // Extraer la información de la planilla
     const planilla = resultadoPlanilla.planilla;
 
-    // Variables para la sección "totales"
+
     let totalCantidad = 0;
     let totalGanado = 0;
 
@@ -880,18 +880,17 @@ async generarReportePlanillaPorRegional(id_planilla: number): Promise<Streamable
     // Aplicamos formato a todos los valores numéricos
     const formattedResumen = resumenArray.map(region => ({
       regional: region.regional,
-      cantidad: formatNumber(region.cantidad),  // Formato correcto
-      total_ganado: formatNumber(region.total_ganado),  // Formato correcto
-      porcentaje_10: formatNumber(region.porcentaje_10)  // Formato correcto
+      cantidad: formatNumber(region.cantidad),
+      total_ganado: formatNumber(region.total_ganado),  
+      porcentaje_10: formatNumber(region.porcentaje_10) 
     }));
 
     const formattedTotales = {
-      cantidad_total: formatNumber(totales.cantidad_total),  // Formato correcto
-      total_ganado: formatNumber(totales.total_ganado),  // Formato correcto
-      porcentaje_10: formatNumber(totales.porcentaje_10)  // Formato correcto
+      cantidad_total: formatNumber(totales.cantidad_total),  
+      total_ganado: formatNumber(totales.total_ganado),  
+      porcentaje_10: formatNumber(totales.porcentaje_10)  
     };
 
-    // Estructura final del JSON con los totales separados y formato correcto
     const data = {
       mensaje: 'Detalles obtenidos con éxito',
       planilla: planilla,
@@ -901,16 +900,14 @@ async generarReportePlanillaPorRegional(id_planilla: number): Promise<Streamable
 
     console.log('Datos para el reporte:', JSON.stringify(data, null, 2));
 
-    // Ruta de la plantilla de reporte en ODT
     const templatePath = path.resolve(
       'src/modules/planillas_aportes/templates/resumen.docx',
     );
 
-    // Generar el reporte con Carbone
     return new Promise<StreamableFile>((resolve, reject) => {
       carbone.render(
         templatePath,
-        data, // ✅ JSON con la estructura correcta y valores formateados
+        data, 
         { convertTo: 'pdf' },
         (err, result) => {
           if (err) {
@@ -921,10 +918,9 @@ async generarReportePlanillaPorRegional(id_planilla: number): Promise<Streamable
           console.log('Reporte generado correctamente');
 
           if (typeof result === 'string') {
-            result = Buffer.from(result, 'utf-8'); // Convertir el string a Buffer
+            result = Buffer.from(result, 'utf-8'); 
           }
 
-          // Devolver el archivo como un StreamableFile con nombre basado en la planilla
           resolve(new StreamableFile(result, {
             type: 'application/pdf',
             disposition: `attachment; filename=reporte_planilla_${planilla.cod_patronal}_${planilla.mes}_${planilla.gestion}.pdf`,
@@ -938,7 +934,7 @@ async generarReportePlanillaPorRegional(id_planilla: number): Promise<Streamable
 }
  
 // ------------------------------------------------------------------------------------------------------------------------------------------------------------
-// Metodo para obtener los datos de la planilla por regional (se usa en la parte de resumen de planilla para mostrar al empleador y administrador) 
+// 20 .- Metodo para obtener los datos de la planilla por regional (se usa en la parte de resumen de planilla para mostrar al empleador y administrador) 
 async obtenerDatosPlanillaPorRegional(id_planilla: number): Promise<any> {
   try {
     // Obtener la información de la planilla y sus detalles

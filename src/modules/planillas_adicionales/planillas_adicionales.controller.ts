@@ -333,6 +333,52 @@ async obtenerPlanillasAdicionalesObservadas(
   }
 }
 
+// 15 .- MANDAR CORREGIDA PLANILLA DE APORTES OBSERVADA A ADMINSTRADOR CBES CUANDO (ESTADO = 3) -------------------------------------------------------------------------------------------------------
+@Put('corregir/:id_planilla_adicional')
+async corregirPlanillaAdicional(
+  @Param('id_planilla_adicional') id_planilla_adicional: number,
+  @Body() body,
+) {
+  try {
+    return await this.planillasAdicionalesService.corregirPlanillaAdicional(id_planilla_adicional, body);
+  } catch (error) {
+    throw new HttpException(
+      {
+        status: HttpStatus.BAD_REQUEST,
+        error: error.message,
+      },
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+}
+
+// 20 .- Metodo para obtener los datos de la planilla por regional (se usa en la parte de resumen de planilla para mostrar al empleador y administrador) -------------------------------------------------------------------------------------------------------
+@Get('datos-planilla/:id_planilla_adicional')
+async obtenerDatosPlanillaAdicional(
+  @Param('id_planilla_adicional') id_planilla_adicional: number,
+): Promise<any> {
+  try {
+    const datos = await this.planillasAdicionalesService.obtenerDatosPlanillaAdicionalPorRegional(
+      id_planilla_adicional,
+    );
+
+    if (!datos) {
+      throw new Error('No se pudieron obtener los datos de la planilla adicional.');
+    }
+
+    return {
+      success: true,
+      data: datos,
+    };
+  } catch (error) {
+    throw new BadRequestException({
+      success: false,
+      message: 'Error al obtener los datos de la planilla adicional por regional',
+      details: error.message,
+    });
+  }
+}
+
 
 
 

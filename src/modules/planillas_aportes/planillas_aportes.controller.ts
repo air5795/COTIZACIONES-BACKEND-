@@ -257,7 +257,7 @@ export class PlanillasAportesController {
     );
   }
 
-  // Nuevo endpoint para corregir y reenviar una planilla observada a la entidad CBES
+  // 15 .- MANDAR CORREGIDA PLANILLA DE APORTES OBSERVADA A ADMINSTRADOR CBES CUANDO (ESTADO = 3)- ---------------------
   @Put('corregir/:id_planilla')
   async corregirPlanilla(
     @Param('id_planilla') id_planilla: number,
@@ -337,7 +337,7 @@ export class PlanillasAportesController {
     }
   }
 
-  // Nuevo endpoint para obtener los datos de la planilla por regional
+  // 20.-  Nuevo endpoint para obtener los datos de la planilla por regional
 
   @Get('datos-planilla/:id_planilla')
   async obtenerDatosPlanilla(

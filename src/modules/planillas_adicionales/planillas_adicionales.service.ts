@@ -512,11 +512,11 @@ export class PlanillasAdicionalesService {
   
     return { mensaje: '✅ Detalles de la planilla adicional eliminados con éxito' };
   }
-  // 14 .- OBTENER PLANILLAS ADICIONALES OBSERVADAS (ESTADO = 3) ------------------------------------------------------------------------------------------------------
+  // 14 .- OBTENER PLANILLAS ADICIONALES OBSERVADAS (ESTADO = 3)
   async obtenerPlanillasAdicionalesObservadas(cod_patronal: string) {
     const planillas = await this.planillaRepo
       .createQueryBuilder('planillaAdicional')
-      .innerJoinAndSelect('planillaAdicional.id_planilla_aportes', 'planillaAporte')
+      .innerJoin('PlanillasAporte', 'planillaAporte', 'planillaAdicional.id_planilla_aportes = planillaAporte.id_planilla_aportes')
       .where('planillaAporte.cod_patronal = :cod_patronal', { cod_patronal })
       .andWhere('planillaAdicional.estado = :estado', { estado: 3 })
       .orderBy('planillaAdicional.fecha_creacion', 'DESC')
@@ -532,15 +532,177 @@ export class PlanillasAdicionalesService {
         'planillaAdicional.motivo_adicional',
       ])
       .getMany();
-  
+
     if (!planillas.length) {
       return { mensaje: 'No hay planillas adicionales observadas para este código patronal', planillas: [] };
     }
-  
+
     return {
       mensaje: 'Planillas adicionales observadas obtenidas con éxito',
       planillas,
     };
+  }
+  //15 .- MANDAR CORREGIDA PLANILLA DE APORTES OBSERVADA A ADMINSTRADOR CBES CUANDO (ESTADO = 3) ------------------------------------------------------------------------------------------------------
+  async corregirPlanillaAdicional(id_planilla_adicional: number, data: any) {
+  // Buscar la planilla adicional
+  const planilla = await this.planillaRepo.findOne({ where: { id_planilla_adicional } });
+
+  if (!planilla) {
+    throw new BadRequestException('La planilla adicional no existe');
+  }
+
+  // Validar que la planilla esté en estado 3 (Observada)
+  if (planilla.estado !== 3) {
+    throw new BadRequestException('Solo se pueden corregir planillas adicionales observadas');
+  }
+
+  // Calcular el total de los salarios de los trabajadores corregidos
+  const totalImporteCalculado = data.trabajadores.reduce((sum, row) => sum + parseFloat(row.salario || 0), 0);
+
+  // Actualizar la planilla con el total calculado
+  planilla.total_importe = totalImporteCalculado;
+  planilla.total_trabaj = data.trabajadores.length; // Actualizar el total de trabajadores
+  planilla.estado = 1; // Cambia a "Pendiente"
+  planilla.observaciones = null; // Se eliminan las observaciones
+
+  await this.planillaRepo.save(planilla);
+
+  // Eliminar los registros antiguos de `planillas_adicionales_detalles`
+  await this.detalleRepo.delete({ id_planilla_adicional });
+
+  // Guardar los nuevos registros corregidos
+  const nuevosDetalles = data.trabajadores.map((row) => ({
+    id_planilla_adicional,
+    nro: row.nro,
+    ci: row.ci,
+    apellido_paterno: row.apellido_paterno,
+    apellido_materno: row.apellido_materno,
+    nombres: row.nombres,
+    sexo: row.sexo,
+    cargo: row.cargo,
+    fecha_nac: row.fecha_nac,
+    fecha_ingreso: row.fecha_ingreso,
+    fecha_retiro: row.fecha_retiro,
+    dias_pagados: row.dias_pagados,
+    haber_basico: parseFloat(row.haber_basico || 0),
+    bono_antiguedad: parseFloat(row.bono_antiguedad || 0),
+    monto_horas_extra: parseFloat(row.monto_horas_extra || 0),
+    monto_horas_extra_nocturnas: parseFloat(row.monto_horas_extra_nocturnas || 0),
+    otros_bonos_pagos: parseFloat(row.otros_bonos_pagos || 0),
+    salario: parseFloat(row.salario || 0),
+    regional: row.regional,
+  }));
+
+  await this.detalleRepo.save(nuevosDetalles);
+
+  return { mensaje: 'Planilla adicional corregida y reenviada para validación', total_importe: totalImporteCalculado };
+  }
+  // 20 .- Metodo para obtener los datos de la planilla por regional (se usa en la parte de resumen de planilla para mostrar al empleador y administrador)
+  async obtenerDatosPlanillaAdicionalPorRegional(id_planilla_adicional: number): Promise<any> {
+    try {
+      // Obtener la información de la planilla adicional y sus detalles
+      const resultadoPlanilla = await this.obtenerPlanillaAdicional(id_planilla_adicional);
+      // Usa limite: 0 para traer todos los registros sin paginación
+      const detallesPlanilla = await this.obtenerDetallesAdicional(id_planilla_adicional, 1, 0);
+      console.log('Total de trabajadores crudos:', detallesPlanilla.trabajadores.length);
+
+      // Verifica cuántos trabajadores se obtienen inicialmente
+      console.log('1. Total de trabajadores crudos:', detallesPlanilla.trabajadores.length);
+      console.log('1.1. Primeros 5 trabajadores (muestra):', detallesPlanilla.trabajadores.slice(0, 5));
+
+      if (!detallesPlanilla.trabajadores.length) {
+        throw new Error('No se encontraron trabajadores para los datos de la planilla adicional.');
+      }
+
+      // Extraer la información de la planilla
+      const planilla = resultadoPlanilla.planilla;
+
+      // Variables para la sección "totales"
+      let totalCantidad = 0;
+      let totalGanado = 0;
+
+      // Agrupar los datos por regional
+      const regionalesMap = new Map();
+
+      detallesPlanilla.trabajadores.forEach((trabajador, index) => {
+        const { regional, salario } = trabajador;
+        const salarioNum = parseFloat(salario.toString());
+
+        // Muestra algunos trabajadores para verificar sus datos
+        if (index < 5 || index >= detallesPlanilla.trabajadores.length - 5) {
+          console.log(`2. Procesando trabajador #${index + 1}:`, { regional, salario });
+        }
+
+        if (!regionalesMap.has(regional)) {
+          regionalesMap.set(regional, {
+            regional,
+            cantidad: 0,
+            total_ganado: 0,
+            porcentaje_10: 0,
+          });
+        }
+
+        const regionalData = regionalesMap.get(regional);
+        regionalData.cantidad += 1;
+        regionalData.total_ganado += salarioNum;
+        regionalData.porcentaje_10 = parseFloat((regionalData.total_ganado * 0.10).toFixed(2));
+
+        totalCantidad += 1;
+        totalGanado += salarioNum;
+      });
+
+      // Verifica los resultados después de procesar
+      console.log('3. Totales calculados:', { totalCantidad, totalGanado });
+      console.log('3.1. Regionales procesadas (Map):', Array.from(regionalesMap.entries()));
+
+      // Convertir el mapa a un array
+      const resumenArray = Array.from(regionalesMap.values());
+
+      // Verifica el resumen antes de formatear
+      console.log('4. Resumen sin formatear:', resumenArray);
+
+      // Crear la sección de totales separada
+      const totales = {
+        cantidad_total: totalCantidad,
+        total_ganado: parseFloat(totalGanado.toFixed(2)),
+        porcentaje_10: parseFloat((totalGanado * 0.10).toFixed(2)),
+      };
+
+      // Formato de números
+      const formatNumber = (num: number) => new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(num);
+
+      // Formatear los datos
+      const formattedResumen = resumenArray.map((region) => ({
+        regional: region.regional,
+        cantidad: formatNumber(region.cantidad),
+        total_ganado: formatNumber(region.total_ganado),
+        porcentaje_10: formatNumber(region.porcentaje_10),
+      }));
+
+      const formattedTotales = {
+        cantidad_total: formatNumber(totales.cantidad_total),
+        total_ganado: formatNumber(totales.total_ganado),
+        porcentaje_10: formatNumber(totales.porcentaje_10),
+      };
+
+      // Estructura final del JSON
+      const data = {
+        mensaje: 'Detalles obtenidos con éxito',
+        planilla: planilla,
+        resumen: formattedResumen,
+        totales: formattedTotales,
+      };
+
+      // Verifica el resultado final
+      console.log('5. Respuesta final:', data);
+
+      return data;
+    } catch (error) {
+      throw new Error('Error en obtenerDatosPlanillaAdicionalPorRegional: ' + error.message);
+    }
   }
 
 
