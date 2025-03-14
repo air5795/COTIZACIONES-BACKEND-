@@ -12,6 +12,9 @@ RUN apk add --no-cache \
 # Crear el directorio de trabajo dentro del contenedor
 WORKDIR /app
 
+# Crear la carpeta pagos y asignar permisos
+RUN mkdir -p /app/pagos-aportes/pagos && chown node:node /app/pagos-aportes/pagos
+
 # Copiar archivos de dependencias e instalar
 COPY package.json package-lock.json ./
 RUN npm install

@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { PlanillaAportesDetalles } from './planillas_aportes_detalles.entity';
+import { PagoAporte } from 'src/modules/pagos-aportes/entities/pagos-aporte.entity';
 @Entity({ schema: 'transversales', name: 'planillas_aportes' })
 
 export class PlanillasAporte {
@@ -45,6 +46,9 @@ export class PlanillasAporte {
 
     @Column()
     fecha_declarada: Date;
+
+    @OneToMany(() => PagoAporte, (pago) => pago.planilla)
+    pagos: PagoAporte[];
 
 
 }
