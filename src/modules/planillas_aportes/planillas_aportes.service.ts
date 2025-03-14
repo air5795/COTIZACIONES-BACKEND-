@@ -216,6 +216,7 @@ async obtenerHistorial(
         'planilla.estado',
         'planilla.fecha_creacion',
         'planilla.fecha_declarada',
+        'planilla.fecha_pago',
       ])
       .skip(skip)
       .take(limite);
@@ -287,7 +288,9 @@ async obtenerTodoHistorial() {
         'total_importe',
         'total_trabaj',
         'estado',
-        'fecha_creacion'
+        'fecha_creacion',
+        'fecha_declarada',
+        'fecha_pago'
       ]
     });
 
@@ -1042,8 +1045,21 @@ async obtenerDatosPlanillaPorRegional(id_planilla: number): Promise<any> {
     throw new Error('Error en obtenerDatosPlanillaPorRegional: ' + error.message);
   }
 }
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------
+// 21 ACTUALIZAR FECHA PAGO EN PLANILLA APORTE --------------------------------------------------------------------------------------------------------------------------------------------------------------
+async actualizarFechaPago(id_planilla: number, fechaPago?: Date) {
+  const planilla = await this.planillaRepo.findOne({ where: { id_planilla_aportes: id_planilla } });
 
+  if (!planilla) {
+    throw new BadRequestException('La planilla no existe');
+  }
+
+  
+  planilla.fecha_pago = fechaPago;
+
+  await this.planillaRepo.save(planilla);
+
+  return { mensaje: 'Fecha de pago de la planilla añadida correctamente' };
+}
 
 
 }

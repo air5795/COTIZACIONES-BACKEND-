@@ -8,9 +8,10 @@ import { PagoAporte } from '../pagos-aportes/entities/pagos-aporte.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([PlanillasAporte, PlanillaAportesDetalles , PagoAporte]),
+    TypeOrmModule.forFeature([PlanillasAporte, PlanillaAportesDetalles, PagoAporte]),
   ],
   controllers: [PlanillasAportesController],
   providers: [PlanillasAportesService],
+  exports: [PlanillasAportesService], 
 })
 export class PlanillasAportesModule {}

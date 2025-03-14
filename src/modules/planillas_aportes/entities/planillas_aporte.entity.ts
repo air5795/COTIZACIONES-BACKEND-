@@ -47,6 +47,9 @@ export class PlanillasAporte {
     @Column()
     fecha_declarada: Date;
 
+    @Column()
+    fecha_pago: Date;
+
     @OneToMany(() => PagoAporte, (pago) => pago.planilla)
     pagos: PagoAporte[];
 
