@@ -3,7 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { PlanillasAportesService } from './planillas_aportes.service';
 import { ApiQuery, ApiTags } from '@nestjs/swagger';
-import { Response } from 'express';
+import { query, Response } from 'express';
 
 
 
@@ -103,6 +103,62 @@ export class PlanillasAportesController {
       );
     }
   }
+
+    // 4.1 - OBTENER HISTORIAL DE TABLA PLANILLAS DE APORTES ADMINISTRADOR ------------------------------------------------------
+
+    @Get('historialAdmin')
+    @ApiQuery({
+      name: 'busqueda',
+      required: false,
+      type: String,
+      description: 'Término de búsqueda (opcional)',
+    })
+    @ApiQuery({
+      name: 'mes',
+      required: false,
+      type: String,
+      description: 'Término de búsqueda (opcional)',
+    })
+    @ApiQuery({
+      name: 'anio',
+      required: false,
+      type: String,
+      description: 'Término de búsqueda (opcional)',
+    })
+    @ApiQuery({
+      name: 'estado',
+      required: false,
+      type: Number,
+      description: 'Término de búsqueda (opcional)',
+    })
+    async obtenerHistorialAdmin(
+      @Query('pagina') pagina: number = 1,
+      @Query('limite') limite: number = 10,
+      @Query('busqueda') busqueda: string = '',
+      @Query('mes') mes?: string,
+      @Query('anio') anio?: string,
+      @Query('estado') estado?: string,  // Recibe como string
+    ) {
+      try {
+        const estadoNumber = estado !== undefined ? Number(estado) : undefined;  // Convierte a número
+        return await this.planillasAportesService.obtenerHistorialAdmin(
+          pagina,
+          limite,
+          busqueda,
+          mes,
+          anio,
+          estadoNumber, 
+        );
+      } catch (error) {
+        throw new HttpException(
+          {
+            status: HttpStatus.INTERNAL_SERVER_ERROR,
+            error: 'Error al obtener el historial de planillas',
+          },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+    }
 
   // 5.- OBTENER HISTORIAL DE TABLA PLANILLAS DE APORTES CUANDO ESTADO = 1 (presentadas) --------------------------------------------------------------
 
@@ -365,4 +421,38 @@ export class PlanillasAportesController {
       });
     }
   }
+
+  // 22.-  Función para consultar la API del Banco Central y obtener el UFV de una fecha específica ---------------------
+  @Get('ufv/:fecha')
+  async getUfvForDate(@Param('fecha') fecha: string) {
+    // Validar y convertir la fecha
+    const date = new Date(fecha);
+    if (isNaN(date.getTime())) {
+      throw new BadRequestException('Fecha inválida. Use el formato YYYY-MM-DD (e.g., 2025-01-09)');
+    }
+
+    const ufv = await this.planillasAportesService.getUfvForDate(date);
+    return {
+      fecha: fecha,
+      ufv: ufv,
+      mensaje: '✅ UFV consultado con éxito',
+    };
+  }
+
+ // Función para calcular los aportes devengados
+ @Post('calcular/:id')
+ async calcularAportes(@Param('id') id: string) { 
+   const planillaId = parseInt(id); 
+   if (isNaN(planillaId)) {
+     throw new BadRequestException('El ID de la planilla debe ser un número válido');
+   }
+
+   const planilla = await this.planillasAportesService.calcularAportes(planillaId);
+   return {
+     mensaje: '✅ Cálculo de aportes realizado con éxito',
+     planilla,
+   };
+ }
+
+
 }

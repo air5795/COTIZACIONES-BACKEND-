@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PlanillasAporte } from './entities/planillas_aporte.entity';
 import { PlanillaAportesDetalles } from './entities/planillas_aportes_detalles.entity';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import * as xlsx from 'xlsx';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -15,25 +17,11 @@ export class PlanillasAportesService {
   constructor(
     @InjectRepository(PlanillasAporte)
     private planillaRepo: Repository<PlanillasAporte>,
+    private readonly httpService: HttpService,
 
     @InjectRepository(PlanillaAportesDetalles)
     private detalleRepo: Repository<PlanillaAportesDetalles>,
   ) {}
-
-    // Timeout manual (en milisegundos)
-    private timeout(ms: number): Promise<never> {
-      return new Promise((_, reject) =>
-        setTimeout(
-          () =>
-            reject(
-              new Error(
-                'El tiempo de espera para procesar la solicitud ha expirado',
-              ),
-            ),
-          ms,
-        ),
-      );
-    }
 
 // 1 .-  PROCESAR EXCEL DE APORTES-------------------------------------------------------------------------------------------------------
 procesarExcel(filePath: string) {
@@ -272,6 +260,105 @@ async obtenerHistorial(
     throw new Error('Error al obtener el historial de planillas');
   }
 }
+// 4.1 .- OBTENER HISTORIAL DETALLADO PAGINACION Y BUSQUEDA DE TABLA PLANILLAS DE APORTES ADMINISTRADOR -------------------------------------------------------------------------------------------------------
+async obtenerHistorialAdmin(
+  pagina: number = 1,
+  limite: number = 10,
+  busqueda: string = '',
+  mes?: string,
+  anio?: string,
+  estado?: number
+) {
+  try {
+    console.log('Parámetros recibidos:', { pagina, limite, busqueda, mes, anio, estado });
+
+    const skip = (pagina - 1) * limite;
+    console.log('Skip calculado:', skip);
+
+    const query = this.planillaRepo.createQueryBuilder('planilla')
+      .where('planilla.estado IN (:...estados)', { estados: [1, 2] })
+      .orderBy('planilla.fecha_planilla', 'DESC')
+      .select([
+        'planilla.id_planilla_aportes',
+        'planilla.com_nro',
+        'planilla.fecha_planilla',
+        'planilla.cod_patronal',
+        'planilla.empresa',
+        'planilla.total_importe',
+        'planilla.total_trabaj',
+        'planilla.estado',
+        'planilla.fecha_creacion',
+        'planilla.fecha_declarada',
+        'planilla.fecha_pago',
+      ])
+      .skip(skip)
+      .take(limite);
+
+    // Filtro por mes (extraer el mes de fecha_planilla)
+    if (mes) {
+      console.log('Aplicando filtro por mes:', mes);
+      query.andWhere('EXTRACT(MONTH FROM planilla.fecha_planilla) = :mes', { mes });
+    }
+
+    // Filtro por año (extraer el año de fecha_planilla)
+    if (anio) {
+      console.log('Aplicando filtro por año:', anio);
+      query.andWhere('EXTRACT(YEAR FROM planilla.fecha_planilla) = :anio', { anio });
+    }
+
+    if (estado !== undefined && estado !== null && !isNaN(estado)) {
+      console.log('Filtrando por estado:', estado);
+      query.andWhere('planilla.estado = :estado', { estado });
+    }
+
+    // Búsqueda en todos los campos (como ya tenías)
+    if (busqueda) {
+      console.log('Aplicando filtro por búsqueda:', busqueda);
+      query.andWhere(
+        `(
+          CAST(planilla.id_planilla_aportes AS TEXT) LIKE :busqueda OR
+          CAST(planilla.com_nro AS TEXT) LIKE :busqueda OR
+          CAST(planilla.fecha_planilla AS TEXT) LIKE :busqueda OR
+          planilla.cod_patronal LIKE :busqueda OR
+          planilla.empresa LIKE :busqueda OR
+          CAST(planilla.total_importe AS TEXT) LIKE :busqueda OR
+          CAST(planilla.total_trabaj AS TEXT) LIKE :busqueda OR
+          CAST(planilla.estado AS TEXT) LIKE :busqueda OR
+          CAST(planilla.fecha_creacion AS TEXT) LIKE :busqueda
+        )`,
+        { busqueda: `%${busqueda}%` }
+      );
+    }
+
+    const sql = query.getSql();
+    console.log('Consulta SQL generada:', sql);
+
+    const [planillas, total] = await query.getManyAndCount();
+    console.log('Planillas obtenidas:', planillas);
+    console.log('Total de planillas:', total);
+
+    if (!planillas.length) {
+      return {
+        mensaje: 'No hay planillas registradas para este código patronal',
+        planillas: [],
+        total: 0,
+        pagina,
+        limite,
+      };
+    }
+
+    return {
+      mensaje: 'Historial obtenido con éxito',
+      planillas,
+      total,
+      pagina,
+      limite,
+    };
+  } catch (error) {
+    console.error('Error en obtenerHistorialAdmin:', error);
+    throw new Error('Error al obtener el historial de planillas');
+  }
+}
 // 5 .- OBTENER HISTORIAL DE TABLA PLANILLAS DE APORTES CUANDO ESTADO = 1 (presentadas) -------------------------------------------------------------------------------------------------------
 async obtenerTodoHistorial() {
   try {
@@ -340,6 +427,7 @@ async obtenerTodo(pagina: number = 1, limite: number = 10, busqueda: string = ''
     throw new Error('Error al obtener el historial de planillas de aportes completo');
   }
 }
+
 // 7 .- OBTENER PLANILLA DE APORTES POR ID (ASINCRONO SIN PAGINACION) -------------------------------------------------------------------------------------------------------
 async obtenerPlanilla(id_planilla: number) {
   const planilla = await this.planillaRepo.findOne({ where: { id_planilla_aportes: id_planilla } });
@@ -936,7 +1024,6 @@ async generarReportePlanillaPorRegional(id_planilla: number): Promise<Streamable
   }
 }
  
-// ------------------------------------------------------------------------------------------------------------------------------------------------------------
 // 20 .- Metodo para obtener los datos de la planilla por regional (se usa en la parte de resumen de planilla para mostrar al empleador y administrador) 
 async obtenerDatosPlanillaPorRegional(id_planilla: number): Promise<any> {
   try {
@@ -1060,6 +1147,105 @@ async actualizarFechaPago(id_planilla: number, fechaPago?: Date) {
 
   return { mensaje: 'Fecha de pago de la planilla añadida correctamente' };
 }
+
+// 22.-  Función para consultar la API del Banco Central y obtener el UFV de una fecha específica -------------------------------------------------------------------------------------------------------
+async getUfvForDate(fecha: Date): Promise<number> {
+  const year = fecha.getFullYear();
+  const month = String(fecha.getMonth() + 1).padStart(2, '0');
+  const day = String(fecha.getDate()).padStart(2, '0');
+  const formattedDate = `${year}/${month}/${day}`;
+
+  try {
+    const response = await firstValueFrom(
+      this.httpService.get(
+        `https://www.bcb.gob.bo/librerias/charts/ufv.php?cFecIni=${formattedDate}&cFecFin=${formattedDate}`,
+      ),
+    );
+
+    const data = response.data;
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new BadRequestException(`No se encontró UFV para la fecha ${formattedDate}`);
+    }
+
+    const ufv = parseFloat(data[0].val_ufv);
+    if (isNaN(ufv)) {
+      throw new BadRequestException(`El valor de UFV para la fecha ${formattedDate} no es válido`);
+    }
+
+    return ufv;
+  } catch (error) {
+    throw new BadRequestException(`Error al consultar el UFV para la fecha ${formattedDate}: ${error.message}`);
+  }
+}
+
+// Función para calcular los aportes devengados -------------------------------------------------------------------------------------------------------
+async calcularAportes(idPlanilla: number): Promise<PlanillasAporte> {
+  const planilla = await this.planillaRepo.findOne({
+    where: { id_planilla_aportes: idPlanilla },
+  });
+
+  if (!planilla) {
+    throw new BadRequestException('Planilla no encontrada');
+  }
+
+  if (!planilla.fecha_declarada || !planilla.fecha_pago) {
+    throw new BadRequestException('fecha_declarada y fecha_pago deben estar definidas para calcular los aportes');
+  }
+
+  // 3. Calcular Aporte 10% (total_importe es el Salario Cotizable)
+  planilla.aporte_10 = planilla.total_importe * 0.10;
+
+  // 4. Obtener UFV Día Oblig. Formal (usando fecha_declarada)
+  planilla.ufv_dia_formal = await this.getUfvForDate(planilla.fecha_declarada);
+
+  // 5. Obtener UFV Día Presentación (usando fecha_pago - 1 día)
+  const fechaPagoAjustada = new Date(planilla.fecha_pago);
+  fechaPagoAjustada.setDate(fechaPagoAjustada.getDate() - 1);
+  planilla.ufv_dia_presentacion = await this.getUfvForDate(fechaPagoAjustada);
+
+  // 6. Calcular Aporte Patronal Actualizado (nueva fórmula)
+  const calculoAporteActualizado = (planilla.aporte_10 / planilla.ufv_dia_formal) * planilla.ufv_dia_presentacion;
+  planilla.aporte_actualizado = calculoAporteActualizado < planilla.aporte_10 ? planilla.aporte_10 : calculoAporteActualizado;
+
+  // 7. Calcular Monto Actualizado (nueva fórmula)
+  const calculoMontoActualizado = planilla.aporte_actualizado - planilla.aporte_10;
+  planilla.monto_actualizado = calculoMontoActualizado < 0 ? 0 : calculoMontoActualizado;
+
+  // 8. Calcular 1% Multa por la No Presentación Planilla
+  planilla.multa_no_presentacion = planilla.aporte_10 * 0.01;
+
+  // 9. Calcular Días de Retraso
+  const fechaPago = new Date(planilla.fecha_pago);
+  const fechaDeclarada = new Date(planilla.fecha_declarada);
+  planilla.dias_retraso = Math.round(
+    ( fechaPago.getTime() - fechaDeclarada.getTime())   / (1000 * 60 * 60 * 24) + 1,
+  );
+
+  // 10. Calcular Intereses
+  planilla.intereses = (planilla.aporte_actualizado * 0.0999 / 360) * planilla.dias_retraso;
+
+  // 11. Calcular Multa s/Int. 10%
+  planilla.multa_sobre_intereses = planilla.intereses * 0.1;
+
+  // 12. Calcular Total a Cancelar
+  planilla.total_a_cancelar =
+    planilla.aporte_10 +
+    planilla.monto_actualizado +
+    planilla.multa_no_presentacion +
+    planilla.intereses +
+    planilla.multa_sobre_intereses;
+
+  // 13. Guardar los cambios
+  await this.planillaRepo.save(planilla);
+
+  return planilla;
+}
+
+
+
+
+
+
 
 
 }

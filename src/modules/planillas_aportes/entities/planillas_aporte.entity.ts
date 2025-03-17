@@ -1,57 +1,84 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { PlanillaAportesDetalles } from './planillas_aportes_detalles.entity';
 import { PagoAporte } from 'src/modules/pagos-aportes/entities/pagos-aporte.entity';
+
 @Entity({ schema: 'transversales', name: 'planillas_aportes' })
-
 export class PlanillasAporte {
+  @PrimaryGeneratedColumn()
+  id_planilla_aportes: number;
 
-    @PrimaryGeneratedColumn()
-    id_planilla_aportes: number;
+  @Column()
+  com_nro: number;
 
-    @Column()
-    com_nro: number;
-  
-    @Column()
-    cod_patronal: string;
-  
-    @Column()
-    mes: string;
-    
-    @Column()
-    gestion: string;
-    
-    @Column()
-    empresa: string;
-    
-    @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-    total_importe: number;
+  @Column()
+  cod_patronal: string;
 
-    @Column()
-    total_trabaj: number;
-  
-    @Column({ default: 1 })
-    estado: number;
-  
-    @Column({ default: () => 'CURRENT_USER' })
-    usuario_creacion: string;
-  
-    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-    fecha_creacion: Date;
+  @Column()
+  mes: string;
 
-    @Column()
-    observaciones: string;
+  @Column()
+  gestion: string;
 
-    @Column()
-    fecha_planilla: Date;
+  @Column()
+  empresa: string;
 
-    @Column()
-    fecha_declarada: Date;
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  total_importe: number;
 
-    @Column()
-    fecha_pago: Date;
+  @Column()
+  total_trabaj: number;
 
-    @OneToMany(() => PagoAporte, (pago) => pago.planilla)
-    pagos: PagoAporte[];
+  @Column({ default: 1 })
+  estado: number;
 
+  @Column({ default: () => 'CURRENT_USER' })
+  usuario_creacion: string;
 
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  fecha_creacion: Date;
+
+  @Column({ nullable: true })
+  observaciones: string;
+
+  @Column({ nullable: true })
+  fecha_planilla: Date;
+
+  @Column({ nullable: true })
+  fecha_declarada: Date;
+
+  @Column({ nullable: true })
+  fecha_pago: Date;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  aporte_10: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 6, nullable: true })
+  ufv_dia_formal: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 6, nullable: true })
+  ufv_dia_presentacion: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  aporte_actualizado: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  monto_actualizado: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  multa_no_presentacion: number;
+
+  @Column({ type: 'integer', nullable: true })
+  dias_retraso: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  intereses: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  multa_sobre_intereses: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  total_a_cancelar: number;
+
+  @OneToMany(() => PagoAporte, (pago) => pago.planilla)
+  pagos: PagoAporte[];
 }
