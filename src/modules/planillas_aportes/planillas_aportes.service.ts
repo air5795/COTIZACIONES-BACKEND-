@@ -1273,12 +1273,17 @@ async calcularAportes(idPlanilla: number): Promise<PlanillasAporte> {
   console.log('Multa por No Presentación calculada:', planilla.multa_no_presentacion);
   console.log('¿Aplica multa por no presentación?', aplicaMultaNoPresentacion);
 
-  // 10. Calcular Días de Retraso (comparando con la fecha límite)
+  // 10. Calcular Días de Retraso (a partir del 1 de enero de 2025)
   const fechaPagoNormalized = new Date(fechaPagoBolivia);
   fechaPagoNormalized.setHours(0, 0, 0, 0); // Normalizar a medianoche local
+
+  // Fecha de inicio de retraso: 1 de enero de 2025
+  const fechaInicioRetraso = new Date(Date.UTC(2025, 0, 1)); // 1 de enero de 2025
+  fechaInicioRetraso.setHours(0, 0, 0, 0); // Normalizar a medianoche local
+
   planilla.dias_retraso = Math.max(
     Math.floor(
-      (fechaPagoNormalized.getTime() - fechaLimiteNormalized.getTime()) / (1000 * 60 * 60 * 24)
+      (fechaPagoNormalized.getTime() - fechaInicioRetraso.getTime()) / (1000 * 60 * 60 * 24)
     ),
     0
   );
@@ -1292,11 +1297,11 @@ async calcularAportes(idPlanilla: number): Promise<PlanillasAporte> {
   planilla.multa_sobre_intereses = planilla.intereses * 0.1;
   console.log('Multa sobre Intereses calculada:', planilla.multa_sobre_intereses);
 
-  // 13. Calcular Total a Cancelar (incluye multa_no_presentacion solo si aplica)
+  // 13. Calcular Total a Cancelar
   planilla.total_a_cancelar =
     planilla.aporte_10 +
     planilla.monto_actualizado +
-    (aplicaMultaNoPresentacion ? planilla.multa_no_presentacion : 0) +
+    (planilla.dias_retraso > 0 ? planilla.multa_no_presentacion : 0) + // Solo suma multa si hay retraso
     planilla.intereses +
     planilla.multa_sobre_intereses;
   console.log('Total a Cancelar calculado:', planilla.total_a_cancelar);
@@ -1307,7 +1312,6 @@ async calcularAportes(idPlanilla: number): Promise<PlanillasAporte> {
 
   return planilla;
 }
-
 
 
 }
