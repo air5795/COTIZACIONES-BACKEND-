@@ -22,6 +22,9 @@ export class PlanillasAporte {
   @Column()
   empresa: string;
 
+  @Column()
+  tipo_empresa: string;
+
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   total_importe: number;
 
@@ -50,7 +53,7 @@ export class PlanillasAporte {
   fecha_pago: Date;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  aporte_10: number;
+  aporte_porcentaje: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 6, nullable: true })
   ufv_dia_formal: number;
@@ -77,7 +80,24 @@ export class PlanillasAporte {
   multa_sobre_intereses: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  total_a_cancelar_parcial: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   total_a_cancelar: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  total_multas: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  total_tasa_interes: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  total_aportes_asuss: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  total_aportes_min_salud: number;
+
+  
 
   @OneToMany(() => PagoAporte, (pago) => pago.planilla)
   pagos: PagoAporte[];

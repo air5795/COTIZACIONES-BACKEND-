@@ -47,6 +47,7 @@ export class PlanillasAportesController {
       body.gestion,
       body.mes,
       body.empresa,
+      body.tipo_empresa,
     );
   }
 
