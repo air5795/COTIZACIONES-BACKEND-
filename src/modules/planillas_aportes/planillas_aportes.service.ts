@@ -1257,6 +1257,7 @@ console.log('Fecha límite para declaración y pago:', fechaLimite);
 
   // 6. Obtener UFV Día Presentación (usando fecha_pago directamente)
   const fechaPagoForUfv = new Date(fechaPagoBolivia);
+  fechaPagoForUfv.setDate(fechaPagoForUfv.getDate() - 1); // Restar un día
   fechaPagoForUfv.setHours(0, 0, 0, 0); // Normalizar a medianoche local
   planilla.ufv_dia_presentacion = await this.getUfvForDate(fechaPagoForUfv);
   console.log('UFV Día Presentación obtenido:', planilla.ufv_dia_presentacion);
@@ -1324,15 +1325,98 @@ console.log('Fecha límite para declaración y pago:', fechaLimite);
   planilla.total_aportes_min_salud = planilla.aporte_porcentaje * 0.05;
   // 18. Calcular total a cancelar
   planilla.total_a_cancelar = 
-  planilla.total_a_cancelar_parcial - 
-  planilla.total_aportes_asuss - 
-  planilla.total_aportes_min_salud;
+  planilla.total_multas + planilla.total_tasa_interes + planilla.total_a_cancelar_parcial + 5 - 
+  planilla.total_aportes_asuss - planilla.total_aportes_min_salud;
 
   // 19. Guardar los cambios
   await this.planillaRepo.save(planilla);
   console.log('Planilla guardada con éxito');
 
   return planilla;
+}
+
+// reporte 
+async generarReporteAportes(idPlanilla: number): Promise<StreamableFile> {
+  try {
+    // Obtener los datos de la planilla
+    const planilla = await this.planillaRepo.findOne({
+      where: { id_planilla_aportes: idPlanilla },
+    });
+
+    if (!planilla) {
+      throw new Error('Planilla no encontrada');
+    }
+
+    // Formatear los valores numéricos
+    const formatNumber = (num: number) =>
+      new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(num);
+
+    // Preparar los datos para el reporte
+    const data = {
+      planilla: {
+        id_planilla_aportes: planilla.id_planilla_aportes,
+        fecha_planilla: planilla.fecha_planilla.toLocaleDateString(),
+        fecha_declarada: planilla.fecha_declarada.toLocaleDateString(),
+        fecha_pago: planilla.fecha_pago.toLocaleDateString(),
+        tipo_empresa: planilla.tipo_empresa,
+        total_importe: formatNumber(planilla.total_importe),
+        aporte_porcentaje: formatNumber(planilla.aporte_porcentaje),
+        ufv_dia_formal: formatNumber(planilla.ufv_dia_formal),
+        ufv_dia_presentacion: formatNumber(planilla.ufv_dia_presentacion),
+        aporte_actualizado: formatNumber(planilla.aporte_actualizado),
+        monto_actualizado: formatNumber(planilla.monto_actualizado),
+        multa_no_presentacion: formatNumber(planilla.multa_no_presentacion),
+        dias_retraso: planilla.dias_retraso,
+        intereses: formatNumber(planilla.intereses),
+        multa_sobre_intereses: formatNumber(planilla.multa_sobre_intereses),
+        total_a_cancelar_parcial: formatNumber(planilla.total_a_cancelar_parcial),
+        total_multas: formatNumber(planilla.total_multas),
+        total_tasa_interes: formatNumber(planilla.total_tasa_interes),
+        total_aportes_asuss: formatNumber(planilla.total_aportes_asuss),
+        total_aportes_min_salud: formatNumber(planilla.total_aportes_min_salud),
+        total_a_cancelar: formatNumber(planilla.total_a_cancelar),
+      },
+    };
+
+    console.log('Datos para el reporte:', JSON.stringify(data, null, 2));
+
+    // Ruta de la plantilla de Carbone
+    const templatePath = path.resolve(
+      'src/modules/planillas_aportes/templates/resumen_mensual.docx',
+    );
+
+    return new Promise<StreamableFile>((resolve, reject) => {
+      carbone.render(
+        templatePath,
+        data,
+        { convertTo: 'pdf' },
+        (err, result) => {
+          if (err) {
+            console.error('Error en Carbone:', err);
+            return reject(new Error(`Error al generar el reporte con Carbone: ${err}`));
+          }
+
+          console.log('Reporte generado correctamente');
+
+          if (typeof result === 'string') {
+            result = Buffer.from(result, 'utf-8');
+          }
+
+          resolve(
+            new StreamableFile(result, {
+              type: 'application/pdf',
+              disposition: `attachment; filename=reporte_aportes_${planilla.id_planilla_aportes}.pdf`,
+            }),
+          );
+        },
+      );
+    });
+  } catch (error) {
+    throw new Error('Error en generarReporteAportes: ' + error.message);
+  }
 }
 
 

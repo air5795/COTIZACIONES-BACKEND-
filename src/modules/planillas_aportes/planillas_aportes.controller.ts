@@ -455,5 +455,32 @@ export class PlanillasAportesController {
    };
  }
 
+ @Get('reporte-aportes/:id_planilla')
+ async generarReporteAportes(
+   @Param('id_planilla') id_planilla: number,
+ ): Promise<StreamableFile> {
+   try {
+     // Llamamos al servicio que genera el PDF con los datos formateados
+     const fileBuffer = await this.planillasAportesService.generarReporteAportes(
+       id_planilla,
+     );
+
+     // Verificamos si se generó correctamente
+     if (!fileBuffer) {
+       throw new Error('No se pudo generar el reporte.');
+     }
+
+     // Retornamos el PDF como StreamableFile
+     return fileBuffer;
+   } catch (error) {
+     throw new BadRequestException({
+       message: 'Error al generar el reporte de aportes',
+       details: error.message,
+     });
+   }
+ }
+
+
+
 
 }
