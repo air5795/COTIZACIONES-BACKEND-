@@ -2,7 +2,7 @@ import { Controller, Post, Get,StreamableFile, UseInterceptors, UploadedFile, Ba
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { PlanillasAportesService } from './planillas_aportes.service';
-import { ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { query, Response } from 'express';
 
 
@@ -454,6 +454,55 @@ export class PlanillasAportesController {
      planilla,
    };
  }
+
+ // calculo preliminar 
+
+ @Post('calcular-preliminar')
+ @ApiOperation({ summary: 'Calcular el total a cancelar preliminar para una planilla' })
+ @ApiQuery({
+   name: 'id',
+   required: true,
+   description: 'ID de la planilla de aportes',
+   type: String,
+ })
+ @ApiBody({
+   description: 'Cuerpo de la solicitud con la fecha de pago',
+   schema: {
+     type: 'object',
+     properties: {
+       fecha_pago: {
+         type: 'string',
+         format: 'date-time',
+         description: 'Fecha de pago propuesta en formato ISO (ejemplo: 2024-12-25T17:03:00.000Z)',
+         example: '2024-12-25T17:03:00.000Z',
+       },
+     },
+     required: ['fecha_pago'],
+   },
+ })
+ @ApiResponse({ status: 200, description: 'Total a cancelar calculado', type: Number })
+ @ApiResponse({ status: 400, description: 'Solicitud inválida' })
+ async calcularAportesPreliminar(
+   @Query('id') id: string,
+   @Body('fecha_pago') fechaPago: string,
+ ): Promise<number> {
+   console.log(`Solicitud recibida para calcular preliminar - ID: ${id}, Fecha Pago: ${fechaPago}`);
+
+   // Validar que fecha_pago no sea undefined o vacío
+   if (!fechaPago) {
+     throw new BadRequestException('El campo fecha_pago es obligatorio');
+   }
+
+   const fechaPagoDate = new Date(fechaPago);
+   if (isNaN(fechaPagoDate.getTime())) {
+     throw new BadRequestException(`Fecha de pago inválida: ${fechaPago}`);
+   }
+
+   return this.planillasAportesService.calcularAportesPreliminar(parseInt(id), fechaPagoDate);
+ }
+
+
+ // reporte
 
  @Get('reporte-aportes/:id_planilla')
  async generarReporteAportes(

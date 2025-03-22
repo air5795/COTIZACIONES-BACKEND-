@@ -24,6 +24,9 @@ export class PagoAporte {
   @Column({ default: 1 })
   estado: number;
 
+  @Column({ default: 1 })
+  estado_envio: number;
+
   @Column({ default: () => 'CURRENT_USER' })
   usuario_creacion: string;
 

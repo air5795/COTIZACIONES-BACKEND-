@@ -29,11 +29,15 @@ export class PagosAportesController {
     return await this.pagosAportesService.findAll();
   }
 
-  // 3.- LISTAR PAGOS POR ID_PLANILLA_APORTES
+  // 3.- LISTAR PAGOS PARA VISTA DE EMPLEADOR (ESTADO_ENVIO = 0 , ESTADO_ENVIO = 1)
   @Get('by-id/:id')
   async findByIdPlanilla(@Param('id') id: number) {
     return await this.pagosAportesService.findByIdPlanilla(id);
   }
 
-
+  // 4.- LISTAR PAGOS PARA VISTA ADMINISTRADOR (ESTADO_ENVIO = 1)
+  @Get('by-idAdmin/:id')
+  async findByIdPlanillAdmin(@Param('id') id: number) {
+    return await this.pagosAportesService.findByIdPlanillAdmin(id);
+  }
 }
