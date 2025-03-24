@@ -42,7 +42,7 @@ procesarExcel(filePath: string) {
     }
   }
 // 2 .- GUARDAR PLANILLA DE APORTES -------------------------------------------------------------------------------------------------------
-async guardarPlanilla(data: any[], cod_patronal: string, gestion: string, mes: string, empresa: string, tipo_empresa: string) {
+async guardarPlanilla(data: any[], cod_patronal: string, gestion: string, mes: string, empresa: string, tipo_empresa: string, nit: string , legal: string) {
   const fechaPlanilla = new Date(`${gestion}-${mes.padStart(2, '0')}-01`);
   const existePlanilla = await this.planillaRepo.findOne({
     where: { cod_patronal, fecha_planilla: fechaPlanilla }
@@ -69,6 +69,8 @@ async guardarPlanilla(data: any[], cod_patronal: string, gestion: string, mes: s
     fecha_planilla: fechaPlanilla,
     empresa,
     tipo_empresa,
+    emp_nit: nit,
+    emp_legal: legal,
     total_importe: totalImporte,
     total_trabaj: totalTrabaj,
     estado: 0,
@@ -364,27 +366,46 @@ async obtenerHistorialAdmin(
   }
 }
 // 5 .- OBTENER HISTORIAL DE TABLA PLANILLAS DE APORTES CUANDO ESTADO = 1 (presentadas) -------------------------------------------------------------------------------------------------------
-async obtenerTodoHistorial() {
+async obtenerTodoHistorial(mes?: number, gestion?: number) {
   try {
-    const planillas = await this.planillaRepo.find({
-      where: { estado: 1 },
-      order: { fecha_creacion: 'DESC' },
-      select: [
-        'id_planilla_aportes',
-        'com_nro',
-        'cod_patronal',
-        'empresa',
-        'tipo_empresa',
-        'mes',
-        'gestion',
-        'total_importe',
-        'total_trabaj',
-        'estado',
-        'fecha_creacion',
-        'fecha_declarada',
-        'fecha_pago'
-      ]
-    });
+    const query = this.planillaRepo.createQueryBuilder('planilla')
+      .where('planilla.estado = :estado', { estado: 1 })
+      .orderBy('planilla.fecha_creacion', 'DESC')
+      .select([
+        'planilla.id_planilla_aportes',
+        'planilla.com_nro',
+        'planilla.cod_patronal',
+        'planilla.empresa',
+        'planilla.tipo_empresa',
+        'planilla.mes',
+        'planilla.gestion',
+        'planilla.total_importe',
+        'planilla.total_trabaj',
+        'planilla.estado',
+        'planilla.fecha_creacion',
+        'planilla.fecha_declarada',
+        'planilla.fecha_planilla',
+        'planilla.fecha_pago',
+        'planilla.total_a_cancelar',
+        'planilla.total_a_cancelar_parcial',
+        'planilla.aporte_porcentaje',
+        'planilla.total_aportes_asuss',
+        'planilla.total_aportes_min_salud',
+        'planilla.total_multas',
+        'planilla.total_tasa_interes',
+      ]);
+
+    // Filtrar por mes y año si se proporcionan
+    if (mes && gestion) {
+      query.andWhere('EXTRACT(MONTH FROM planilla.fecha_planilla) = :mes', { mes })
+           .andWhere('EXTRACT(YEAR FROM planilla.fecha_planilla) = :gestion', { gestion });
+    } else if (mes) {
+      query.andWhere('EXTRACT(MONTH FROM planilla.fecha_planilla) = :mes', { mes });
+    } else if (gestion) {
+      query.andWhere('EXTRACT(YEAR FROM planilla.fecha_planilla) = :gestion', { gestion });
+    }
+
+    const planillas = await query.getMany();
 
     if (!planillas.length) {
       return { mensaje: 'No hay planillas registradas', planillas: [] };
@@ -392,10 +413,10 @@ async obtenerTodoHistorial() {
 
     return {
       mensaje: 'Historial obtenido con éxito',
-      planillas
+      planillas,
     };
   } catch (error) {
-    throw new Error('Error al obtener el historial de planillas');
+    throw new Error('Error al obtener el historial de planillas: ' + error.message);
   }
 }
 // 6 .- OBTENER HISTORIAL TOTAL PLANILLA DE APORTES -------------------------------------------------------------------------------------------------------
@@ -551,7 +572,7 @@ async obtenerPlanillasPendientes() {
   };
 }
 // 11 .- ACTUALIZAR EL ESTADO DE UNA PLANILLA A PRESENTADO O PENDIENTE = 1 -------------------------------------------------------------------------------------------------------
-async actualizarEstadoAPendiente(id_planilla: number) {
+async actualizarEstadoAPendiente(id_planilla: number, fecha_declarada?: string) {
   const planilla = await this.planillaRepo.findOne({ where: { id_planilla_aportes: id_planilla } });
 
   if (!planilla) {
@@ -559,7 +580,9 @@ async actualizarEstadoAPendiente(id_planilla: number) {
   }
 
   planilla.estado = 1;
-  planilla.fecha_declarada = moment().tz('America/La_Paz').toDate();
+  planilla.fecha_declarada = fecha_declarada 
+    ? moment(fecha_declarada).tz('America/La_Paz').toDate()
+    : moment().tz('America/La_Paz').toDate();
 
   await this.planillaRepo.save(planilla);
 
@@ -917,7 +940,7 @@ async generarReporteBajas(id_planilla: number,cod_patronal: string): Promise<Str
 }
 
 // 19.- Método para generar REPORTE POR REGIONAL RESUMEN -------------------------------------------------------------------------------------------------------
-async generarReportePlanillaPorRegional(id_planilla: number): Promise<StreamableFile> {
+/* async generarReportePlanillaPorRegional(id_planilla: number): Promise<StreamableFile> {
   try {
     // Obtener la información de la planilla y sus detalles
     const resultadoPlanilla = await this.obtenerPlanilla(id_planilla);
@@ -1028,7 +1051,7 @@ async generarReportePlanillaPorRegional(id_planilla: number): Promise<Streamable
   } catch (error) {
     throw new Error('Error en generarReportePlanillaPorRegional: ' + error.message);
   }
-}
+} */
  
 // 20 .- Metodo para obtener los datos de la planilla por regional (se usa en la parte de resumen de planilla para mostrar al empleador y administrador) 
 async obtenerDatosPlanillaPorRegional(id_planilla: number): Promise<any> {
@@ -1531,7 +1554,7 @@ async calcularAportesPreliminar(idPlanilla: number, fechaPagoPropuesta: Date): P
     total_a_cancelar: totalACancelar,
   };
 }
-// reporte 
+// 25 .- reporte DS 08 
 async generarReporteAportes(idPlanilla: number): Promise<StreamableFile> {
   try {
     // Obtener los datos de la planilla
@@ -1542,6 +1565,9 @@ async generarReporteAportes(idPlanilla: number): Promise<StreamableFile> {
     if (!planilla) {
       throw new Error('Planilla no encontrada');
     }
+
+    // Configurar moment para español
+    moment.locale('es');
 
     // Formatear los valores numéricos
     const formatNumber = (num: number) =>
@@ -1554,12 +1580,13 @@ async generarReporteAportes(idPlanilla: number): Promise<StreamableFile> {
     const data = {
       planilla: {
         id_planilla_aportes: planilla.id_planilla_aportes,
-        fecha_planilla: planilla.fecha_planilla.toLocaleDateString(),
-        fecha_declarada: planilla.fecha_declarada.toLocaleDateString(),
-        fecha_pago: planilla.fecha_pago.toLocaleDateString(),
+        mes: moment(planilla.fecha_planilla).format('MMMM').toUpperCase(), // Ej: "ENERO"
+        anio: moment(planilla.fecha_planilla).format('YYYY'), // Ej: "2025"
+        fecha_declarada: moment(planilla.fecha_declarada).format('DD/MM/YYYY'),
+        fecha_pago: moment(planilla.fecha_pago).format('DD/MM/YYYY'),
         tipo_empresa: planilla.tipo_empresa,
         total_importe: formatNumber(planilla.total_importe),
-        aporte_porcentaje: formatNumber(planilla.aporte_porcentaje),
+        aporte_porc: formatNumber(planilla.aporte_porcentaje),
         ufv_dia_formal: formatNumber(planilla.ufv_dia_formal),
         ufv_dia_presentacion: formatNumber(planilla.ufv_dia_presentacion),
         aporte_actualizado: formatNumber(planilla.aporte_actualizado),
@@ -1574,15 +1601,27 @@ async generarReporteAportes(idPlanilla: number): Promise<StreamableFile> {
         total_aportes_asuss: formatNumber(planilla.total_aportes_asuss),
         total_aportes_min_salud: formatNumber(planilla.total_aportes_min_salud),
         total_a_cancelar: formatNumber(planilla.total_a_cancelar),
+        // Nuevos campos
+        empresa: planilla.empresa,
+        patronal: planilla.cod_patronal,
+        total_trabaj: planilla.total_trabaj,
+        com_nro: planilla.com_nro,
+        emp_nit: planilla.emp_nit,
+        emp_legal: planilla.emp_legal,
       },
     };
 
-    console.log('Datos para el reporte:', JSON.stringify(data, null, 2));
+    console.log('Datos para el reporte de aportes:', JSON.stringify(data, null, 2));
 
     // Ruta de la plantilla de Carbone
     const templatePath = path.resolve(
       'src/modules/planillas_aportes/templates/resumen_mensual.docx',
     );
+
+    // Verificar si la plantilla existe
+    if (!fs.existsSync(templatePath)) {
+      throw new Error(`La plantilla en ${templatePath} no existe`);
+    }
 
     return new Promise<StreamableFile>((resolve, reject) => {
       carbone.render(
@@ -1595,7 +1634,7 @@ async generarReporteAportes(idPlanilla: number): Promise<StreamableFile> {
             return reject(new Error(`Error al generar el reporte con Carbone: ${err}`));
           }
 
-          console.log('Reporte generado correctamente');
+          console.log('Reporte de aportes generado correctamente');
 
           if (typeof result === 'string') {
             result = Buffer.from(result, 'utf-8');
@@ -1612,6 +1651,186 @@ async generarReporteAportes(idPlanilla: number): Promise<StreamableFile> {
     });
   } catch (error) {
     throw new Error('Error en generarReporteAportes: ' + error.message);
+  }
+}
+
+ // 26 .- REPORTE DE DECLRACION DE APORTE Y MUESTRA REGIONALES 
+
+async generarReportePlanillaPorRegional(idPlanilla: number): Promise<StreamableFile> {
+  try {
+    // Obtener los datos ya procesados de obtenerDatosPlanillaPorRegional
+    const datosPlanilla = await this.obtenerDatosPlanillaPorRegional(idPlanilla);
+
+    if (!datosPlanilla || !datosPlanilla.planilla) {
+      throw new Error('Planilla no encontrada o sin datos');
+    }
+
+    const porcentaje = datosPlanilla.planilla.total_importe * 0.10;
+
+    moment.locale('es');
+
+    // Preparar los datos para el reporte (usamos los datos ya formateados)
+    const data = {
+      planilla: {
+        id_planilla_aportes: datosPlanilla.planilla.id_planilla_aportes,
+        mes: moment(datosPlanilla.planilla.fecha_planilla).format('MMMM').toUpperCase(),
+        anio: moment(datosPlanilla.planilla.fecha_planilla).format('YYYY'),
+        fecha_declarada: moment(datosPlanilla.planilla.fecha_declarada).format('DD/MM/YYYY'),
+        fecha_pago: moment(datosPlanilla.planilla.fecha_pago).format('DD/MM/YYYY'),
+        tipo_empresa: datosPlanilla.planilla.tipo_empresa,
+        total_importe: datosPlanilla.planilla.total_importe,
+        aporte_porcentaje: datosPlanilla.planilla.aporte_porcentaje,
+        empresa: datosPlanilla.planilla.empresa,
+        total_trabaj: datosPlanilla.planilla.total_trabaj,
+        com_nro: datosPlanilla.planilla.com_nro,
+        aporte_porce: datosPlanilla.planilla.aporte_porcentaje,
+        patronal: datosPlanilla.planilla.cod_patronal,
+        porcentaje: porcentaje,
+        
+      },
+      resumen: datosPlanilla.resumen.map(region => ({
+        regional: region.regional,
+        cantidad: region.cantidad,
+        total_ganado: region.total_ganado,
+        porcentaje_10: region.porcentaje_10,
+      })),
+      totales: {
+        cantidad_total: datosPlanilla.totales.cantidad_total,
+        total_ganado: datosPlanilla.totales.total_ganado,
+        porcentaje_10: datosPlanilla.totales.porcentaje_10,
+      },
+    };
+
+    console.log('Datos para el reporte por regional:', JSON.stringify(data, null, 2));
+
+    // Ruta de la plantilla de Carbone (crea esta plantilla según tu diseño)
+    const templatePath = path.resolve(
+      'src/modules/planillas_aportes/templates/resumen.docx',
+    );
+
+    // Verificar si la plantilla existe
+    if (!fs.existsSync(templatePath)) {
+      throw new Error(`La plantilla en ${templatePath} no existe`);
+    }
+
+    return new Promise<StreamableFile>((resolve, reject) => {
+      carbone.render(
+        templatePath,
+        data,
+        { convertTo: 'pdf' },
+        (err, result) => {
+          if (err) {
+            console.error('Error en Carbone:', err);
+            return reject(new Error(`Error al generar el reporte con Carbone: ${err}`));
+          }
+
+          console.log('Reporte por regional generado correctamente');
+
+          if (typeof result === 'string') {
+            result = Buffer.from(result, 'utf-8');
+          }
+
+          resolve(
+            new StreamableFile(result, {
+              type: 'application/pdf',
+              disposition: `attachment; filename=reporte_planilla_regional_${idPlanilla}.pdf`,
+            }),
+          );
+        },
+      );
+    });
+  } catch (error) {
+    throw new Error('Error en generarReportePlanillaPorRegional: ' + error.message);
+  }
+}
+
+// 27 .- REPORTE DE APORTES RECIBIDOS POR MES
+
+async generarReporteHistorial(mes?: number, gestion?: number): Promise<StreamableFile> {
+  try {
+    // Obtener el historial de planillas usando el método existente
+    const historial = await this.obtenerTodoHistorial(mes, gestion);
+    const planillas = historial.planillas;
+
+    if (!planillas || planillas.length === 0) {
+      throw new Error('No hay planillas presentadas para generar el reporte');
+    }
+
+    // Configurar moment para español
+    moment.locale('es');
+
+    // Formatear los valores numéricos
+    const formatNumber = (num: number) =>
+      new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(num);
+
+    // Preparar los datos para el reporte
+    const data = {
+      mes: mes || 'Todos',
+      gestion: gestion || 'Todos',
+      planillas: planillas.map((planilla) => ({
+        id_planilla_aportes: planilla.id_planilla_aportes,
+        com_nro: planilla.com_nro,
+        cod_patronal: planilla.cod_patronal,
+        empresa: planilla.empresa,
+        tipo_empresa: planilla.tipo_empresa,
+        total_importe: formatNumber(planilla.total_importe),
+        total_trabaj: planilla.total_trabaj,
+        fecha_declarada: moment(planilla.fecha_declarada).format('DD/MM/YYYY'),
+        fecha_pago: planilla.fecha_pago ? moment(planilla.fecha_pago).format('DD/MM/YYYY') : 'No pagado',
+        total_a_cancelar: formatNumber(planilla.total_a_cancelar),
+        total_multas: formatNumber(planilla.total_multas),
+        total_tasa_interes: formatNumber(planilla.total_tasa_interes),
+        mes: moment(planilla.fecha_planilla).format('MMMM').toUpperCase(), 
+        anio: moment(planilla.fecha_planilla).format('YYYY'),
+        aporte_porce: planilla.aporte_porcentaje, 
+        total_asuss: planilla.total_aportes_asuss,
+        total_min_salud: planilla.total_aportes_min_salud,
+      })),
+    };
+
+    console.log('Datos para el reporte de historial:', JSON.stringify(data, null, 2));
+
+    // Ruta de la plantilla de Carbone
+    const templatePath = path.resolve(
+      'src/modules/planillas_aportes/templates/aportes-mensuales.docx',
+    );
+
+    // Verificar si la plantilla existe
+    if (!fs.existsSync(templatePath)) {
+      throw new Error(`La plantilla en ${templatePath} no existe`);
+    }
+
+    return new Promise<StreamableFile>((resolve, reject) => {
+      carbone.render(
+        templatePath,
+        data,
+        { convertTo: 'pdf' },
+        (err, result) => {
+          if (err) {
+            console.error('Error en Carbone:', err);
+            return reject(new Error(`Error al generar el reporte con Carbone: ${err}`));
+          }
+
+          console.log('Reporte de historial de planillas generado correctamente');
+
+          if (typeof result === 'string') {
+            result = Buffer.from(result, 'utf-8');
+          }
+
+          resolve(
+            new StreamableFile(result, {
+              type: 'application/pdf',
+              disposition: `attachment; filename=historial_planillas_${mes || 'todos'}_${gestion || 'todos'}_${new Date().toISOString().split('T')[0]}.pdf`,
+            }),
+          );
+        },
+      );
+    });
+  } catch (error) {
+    throw new Error('Error en generarReporteHistorial: ' + error.message);
   }
 }
 

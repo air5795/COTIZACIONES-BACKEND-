@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { HttpModule } from '@nestjs/axios'; // Importación correcta de HttpModule
 import { PlanillasAdicionalesService } from './planillas_adicionales.service';
 import { PlanillasAdicionalesController } from './planillas_adicionales.controller';
 import { PlanillasAdicionale } from './entities/planillas_adicionale.entity';
@@ -13,8 +14,10 @@ import { PlanillasAporte } from '../planillas_aportes/entities/planillas_aporte.
       PlanillaAdicionalDetalles,
       PlanillasAporte,
     ]),
+    HttpModule, // Mueve HttpModule aquí, fuera de TypeOrmModule.forFeature
   ],
   controllers: [PlanillasAdicionalesController],
   providers: [PlanillasAdicionalesService],
+  exports: [PlanillasAdicionalesService],
 })
 export class PlanillasAdicionalesModule {}

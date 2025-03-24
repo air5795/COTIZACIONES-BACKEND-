@@ -1,4 +1,4 @@
-import { Controller, Post, Get,StreamableFile, UseInterceptors, UploadedFile, BadRequestException, Body, Param, Put, HttpException, HttpStatus, Res, Delete, Query } from '@nestjs/common';
+import { Controller, Post, Get,StreamableFile, UseInterceptors, UploadedFile, BadRequestException, Body, Param, Put, HttpException, HttpStatus, Res, Delete, Query, ParseIntPipe } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { PlanillasAportesService } from './planillas_aportes.service';
@@ -48,6 +48,8 @@ export class PlanillasAportesController {
       body.mes,
       body.empresa,
       body.tipo_empresa,
+      body.nit,
+      body.legal,
     );
   }
 
@@ -269,8 +271,11 @@ export class PlanillasAportesController {
 
   // 11 .- ACTUALIZAR EL ESTADO DE UNA PLANILLA A PRESENTADO O PENDIENTE = 1 -------------------------------------
   @Put('estado/pendiente/:id_planilla')
-  async actualizarEstadoAPendiente(@Param('id_planilla') id_planilla: number) {
-    return this.planillasAportesService.actualizarEstadoAPendiente(id_planilla);
+  async actualizarEstadoAPendiente(
+    @Param('id_planilla') id_planilla: number,
+    @Body('fecha_declarada') fecha_declarada?: string
+  ) {
+    return this.planillasAportesService.actualizarEstadoAPendiente(id_planilla, fecha_declarada);
   }
 
   // 12 .- ACTUALIZAR METODO PARA APROBAR U OBSERVAR LA PLANILLA (ESTADO 2 o 3) -------------------------------------
@@ -440,7 +445,7 @@ export class PlanillasAportesController {
     };
   }
 
- // Función para calcular los aportes devengados
+ // Función para calcular los aportes mensuales
  @Post('calcular/:id')
  async calcularAportes(@Param('id') id: string) { 
    const planillaId = parseInt(id); 
@@ -528,6 +533,74 @@ export class PlanillasAportesController {
      });
    }
  }
+
+ // 26 .- REPORTE DE DECLRACION DE APORTE Y MUESTRA REGIONALES 
+
+ @Get('reporte-planilla-regional/:id_planilla')
+@ApiOperation({ summary: 'Generar reporte PDF de planilla por regional' })
+@ApiResponse({ status: 200, description: 'Reporte PDF generado exitosamente', type: StreamableFile })
+@ApiResponse({ status: 400, description: 'Error al generar el reporte' })
+async generarReportePlanillaPorRegional(
+  @Param('id_planilla') id_planilla: number,
+): Promise<StreamableFile> {
+  try {
+    // Llamamos al servicio que genera el PDF con los datos por regional
+    const fileBuffer = await this.planillasAportesService.generarReportePlanillaPorRegional(
+      id_planilla,
+    );
+
+    // Verificamos si se generó correctamente
+    if (!fileBuffer) {
+      throw new Error('No se pudo generar el reporte por regional.');
+    }
+
+    // Retornamos el PDF como StreamableFile
+    return fileBuffer;
+  } catch (error) {
+    throw new BadRequestException({
+      message: 'Error al generar el reporte de planilla por regional',
+      details: error.message,
+    });
+  }
+}
+
+// 27 .- REPORTE
+
+@Get('reporte-aportes-mes/:mes?/:gestion?')
+  @ApiOperation({ summary: 'Generar reporte PDF del historial de planillas presentadas' })
+  @ApiResponse({ status: 200, description: 'Reporte PDF generado exitosamente', type: StreamableFile })
+  @ApiResponse({ status: 400, description: 'Error al generar el reporte' })
+  async generarReporteHistorial(
+    @Param('mes', new ParseIntPipe({ optional: true })) mes?: number,
+    @Param('gestion', new ParseIntPipe({ optional: true })) gestion?: number,
+  ): Promise<StreamableFile> {
+    try {
+      // Validar que el mes esté entre 1 y 12 si se proporciona
+      if (mes && (mes < 1 || mes > 12)) {
+        throw new HttpException(
+          { status: HttpStatus.BAD_REQUEST, error: 'El mes debe estar entre 1 y 12' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const fileBuffer = await this.planillasAportesService.generarReporteHistorial(mes, gestion);
+
+      if (!fileBuffer) {
+        throw new Error('No se pudo generar el reporte de historial de planillas.');
+      }
+
+      return fileBuffer;
+    } catch (error) {
+      throw new HttpException(
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: 'Error al generar el reporte de historial de planillas',
+          details: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
 
 
