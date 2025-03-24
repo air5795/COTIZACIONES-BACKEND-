@@ -15,5 +15,6 @@ import { PlanillasAportesModule } from '../planillas_aportes/planillas_aportes.m
   ],
   controllers: [PagosAportesController],
   providers: [PagosAportesService],
+  
 })
 export class PagosAportesModule {}

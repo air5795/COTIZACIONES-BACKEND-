@@ -10,7 +10,10 @@ import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([PlanillasAporte, PlanillaAportesDetalles, PagoAporte]),
+    TypeOrmModule.forFeature([
+    PlanillasAporte, 
+    PlanillaAportesDetalles, 
+    PagoAporte]),
     HttpModule,
   ],
   controllers: [PlanillasAportesController],

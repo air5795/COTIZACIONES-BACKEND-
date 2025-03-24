@@ -25,6 +25,12 @@ export class PlanillasAporte {
   @Column()
   tipo_empresa: string;
 
+  @Column()
+  emp_nit: string;
+
+  @Column()
+  emp_legal: string;
+
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   total_importe: number;
 

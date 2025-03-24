@@ -1,8 +1,8 @@
-import { Controller, Post, UseInterceptors, UploadedFile, BadRequestException, Body, Param, HttpException, HttpStatus, Res, Put, Get, Query, Delete } from '@nestjs/common';
+import { Controller, Post, UseInterceptors, UploadedFile, BadRequestException, Body, Param, HttpException, HttpStatus, Res, Put, Get, Query, Delete, StreamableFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { PlanillasAdicionalesService } from './planillas_adicionales.service';
-import { ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 
 @ApiTags('Planillas Adicionales')
@@ -37,7 +37,7 @@ export class PlanillasAdicionalesController {
   async uploadFile(
     @UploadedFile() file: Express.Multer.File,
     @Param('id_planilla_aportes') id_planilla_aportes: number,
-    @Body() body: { motivo_adicional: string },
+    @Body() body: { motivo_adicional: string , tipo_empresa: string },
   ) {
     if (!file) {
       throw new BadRequestException('No se recibió ningún archivo');
@@ -52,6 +52,7 @@ export class PlanillasAdicionalesController {
       id_planilla_aportes,
       data,
       body.motivo_adicional,
+      body.tipo_empresa,
     );
   }
 
@@ -380,7 +381,111 @@ async obtenerDatosPlanillaAdicional(
 }
 
 
+@Get('ufv/:fecha')
+async getUfvForDate(@Param('fecha') fecha: string) {
+  // Validar y convertir la fecha
+  const date = new Date(fecha);
+  if (isNaN(date.getTime())) {
+    throw new BadRequestException('Fecha inválida. Use el formato YYYY-MM-DD (e.g., 2025-01-09)');
+  }
 
+  const ufv = await this.planillasAdicionalesService.getUfvForDate(date);
+  return {
+    fecha: fecha,
+    ufv: ufv,
+    mensaje: '✅ UFV consultado con éxito',
+  };
+}
+
+ // Función para calcular los aportes de una planilla adicional
+ @Post('calcular/:id')
+ async calcularAportes(@Param('id') id: string) { 
+   const planillaId = parseInt(id); 
+   if (isNaN(planillaId)) {
+     throw new BadRequestException('El ID de la planilla debe ser un número válido');
+   }
+
+   const planilla = await this.planillasAdicionalesService.calcularAportes(planillaId);
+   return {
+     mensaje: '✅ Cálculo de aportes realizado con éxito',
+     planilla,
+   };
+ }
+
+  // calculo preliminar 
+ 
+  @Post('calcular-preliminar')
+  @ApiOperation({ summary: 'Calcular el total a cancelar preliminar para una planilla' })
+  @ApiQuery({
+    name: 'id',
+    required: true,
+    description: 'ID de la planilla de aportes',
+    type: String,
+  })
+  @ApiBody({
+    description: 'Cuerpo de la solicitud con la fecha de pago',
+    schema: {
+      type: 'object',
+      properties: {
+        fecha_pago: {
+          type: 'string',
+          format: 'date-time',
+          description: 'Fecha de pago propuesta en formato ISO (ejemplo: 2024-12-25T17:03:00.000Z)',
+          example: '2024-12-25T17:03:00.000Z',
+        },
+      },
+      required: ['fecha_pago'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Total a cancelar calculado', type: Number })
+  @ApiResponse({ status: 400, description: 'Solicitud inválida' })
+
+  
+  async calcularAportesPreliminar(
+    @Query('id') id: string,
+    @Body('fecha_pago') fechaPago: string,
+  ): Promise<number> {
+    console.log(`Solicitud recibida para calcular preliminar - ID: ${id}, Fecha Pago: ${fechaPago}`);
+ 
+    // Validar que fecha_pago no sea undefined o vacío
+    if (!fechaPago) {
+      throw new BadRequestException('El campo fecha_pago es obligatorio');
+    }
+ 
+    const fechaPagoDate = new Date(fechaPago);
+    if (isNaN(fechaPagoDate.getTime())) {
+      throw new BadRequestException(`Fecha de pago inválida: ${fechaPago}`);
+    }
+ 
+    return this.planillasAdicionalesService.calcularAportesPreliminar(parseInt(id), fechaPagoDate);
+  }
+
+  // 26 .- REPORTE PLANILLA ADICIONAL APORTE Y RESUMEN POR REGIONAL
+
+  @Get('reporte-planilla-adicional-regional/:id_planilla_adicional')
+  @ApiOperation({ summary: 'Generar reporte PDF de planilla adicional por regional' })
+  @ApiResponse({ status: 200, description: 'Reporte PDF generado exitosamente', type: StreamableFile })
+  @ApiResponse({ status: 400, description: 'Error al generar el reporte' })
+  async generarReportePlanillaAdicionalPorRegional(
+    @Param('id_planilla_adicional') id_planilla_adicional: number,
+  ): Promise<StreamableFile> {
+    try {
+      const fileBuffer = await this.planillasAdicionalesService.generarReportePlanillaAdicionalPorRegional(
+        id_planilla_adicional,
+      );
+
+      if (!fileBuffer) {
+        throw new Error('No se pudo generar el reporte adicional por regional.');
+      }
+
+      return fileBuffer;
+    } catch (error) {
+      throw new BadRequestException({
+        message: 'Error al generar el reporte de planilla adicional por regional',
+        details: error.message,
+      });
+    }
+  }
 
 
 

@@ -35,6 +35,7 @@ import { ParClasificadorDetalleModule } from './modules/parametro/par-clasificad
 import { PlanillasAportesModule } from './modules/planillas_aportes/planillas_aportes.module';
 import { PlanillasAdicionalesModule } from './modules/planillas_adicionales/planillas_adicionales.module';
 import { PagosAportesModule } from './modules/pagos-aportes/pagos-aportes.module';
+import { PagosAportesAdicionalesModule } from './modules/pagos-aportes-adicionales/pagos-aportes-adicionales.module';
 
 const db = `postgres://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}?sslmode=disable`;
 
@@ -84,6 +85,8 @@ const db = `postgres://${process.env.DB_USER}:${process.env.DB_PASS}@${process.e
     PlanillasAportesModule,
     PlanillasAdicionalesModule,
     PagosAportesModule,
+    PagosAportesAdicionalesModule,
+
   ],
   controllers: [],
   providers: [],

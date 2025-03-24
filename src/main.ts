@@ -23,10 +23,16 @@ async function bootstrap() {
   app.use(bodyParser.json({ limit: '50mb' }));
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
-  // Configurar serve-static para servir las imágenes
-  app.useStaticAssets(join(__dirname, '..', 'src', 'modules', 'pagos-aportes', 'pagos'), {
-    prefix: '/pagos-imagenes/', // Ruta base para acceder a las imágenes (ej. http://localhost:4000/pagos-imagenes/)
-  });
+// Configurar serve-static para servir las imágenes de pagos-aportes
+app.useStaticAssets(join(__dirname, '..', 'src', 'modules', 'pagos-aportes', 'pagos'), {
+  prefix: '/pagos-imagenes/', // Ruta base para acceder a las imágenes (ej. http://localhost:4000/pagos-imagenes/)
+});
+
+// Configurar serve-static para servir las imágenes de pagos-aportes-adicionales
+app.useStaticAssets(join(__dirname, '..', 'src', 'modules', 'pagos-aportes-adicionales', 'pagos'), {
+  prefix: '/pagos-adicionales-imagenes/', // Ruta base para acceder a las imágenes (ej. http://localhost:4000/pagos-adicionales-imagenes/)
+});
+
 
   app.useGlobalPipes(
     new ValidationPipe({
